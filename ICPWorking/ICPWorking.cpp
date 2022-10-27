@@ -87,7 +87,7 @@ int main()
 cv::Point2f find_center_HSV(cv::Mat& frame)
 {
     cv::Mat frame_hsv;
-cv:cvtColor(frame, frame_hsv, cv::COLOR_BGR2HSV);
+    cv:cvtColor(frame, frame_hsv, cv::COLOR_BGR2HSV);
 
     //HSV range(0...180, 0...255, 0...255);
     cv::Scalar lower_bound(40, 80, 80);
