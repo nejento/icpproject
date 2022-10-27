@@ -1,41 +1,51 @@
-﻿// ICPProject1.cpp : Tento soubor obsahuje funkci main. Provádění programu se tam zahajuje a ukončuje.
+﻿
+// cv02.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
 
-// Spuštění programu: Ctrl+F5 nebo nabídka Ladit > Spustit bez ladění
-// Ladění programu: F5 nebo nabídka Ladit > Spustit ladění
+//funkce find_center_HSV
+// samostatné vlákno img_process_code
+//      dostane kameru
+/*      read file
+    structira img_data_s
+        Point2f
+        Mat frame - data snímku
+    unique_pnt na img_data_s (muze na to ukazovat jen jedna promena)
+        nidky se tak obě vlákna nedostanou naraz do toho
+        zmena pointeru( frame.copyTo(img_data_local -> img_data_local->frame))
 
-// Tipy pro zahájení práce:
-//   1. K přidání nebo správě souborů použijte okno Průzkumník řešení.
-//   2. Pro připojení ke správě zdrojového kódu použijte okno Team Explorer.
-//   3. K zobrazení výstupu sestavení a dalších zpráv použijte okno Výstup.
-//   4. K zobrazení chyb použijte okno Seznam chyb.
-//   5. Pokud chcete vytvořit nové soubory kódu, přejděte na Projekt > Přidat novou položku. Pokud chcete přidat do projektu existující soubory kódu, přejděte na Projekt > Přidat existující položku.
-//   6. Pokud budete chtít v budoucnu znovu otevřít tento projekt, přejděte na Soubor > Otevřít > Projekt a vyberte příslušný soubor .sln.
 
-// C++ 
+*/
 #include <iostream>
 #include <chrono>
-#include <numeric>
+#include <opencv2/opencv.hpp>
 
-// OpenCV 
-#include <opencv2\opencv.hpp>
+#include <GL/glew.h> //pro jednoodušší práci s extentions 
+#include <GL/wglew.h> 
 
-// OpenGL Extension Wrangler
-#include <GL/glew.h> 
-#include <GL/wglew.h> //WGLEW = Windows GL Extension Wrangler (change for different platform) 
-
-// GLFW toolkit
-#include <GLFW/glfw3.h>
-
-// OpenGL math
+#include <GLFW/glfw3.h> //knihovna pro zálkladní obsulu systému (klávesnice/myš)
 #include <glm/glm.hpp>
+
+#include <numeric>
+#include <thread>
+#include <vector>
+#include <memory> //for smart pointers (unique_ptr)
+
 
 
 void draw_cross_relative(cv::Mat& img, cv::Point2f center_relative, int size);
 void draw_cross(cv::Mat& img, int x, int y, int size);
+
+void image_processing(std::string string);
 cv::Point2f find_center_Y(cv::Mat& frame);
 cv::Point2f find_center_HSV(cv::Mat& frame);
+
+typedef struct image_data {
+    cv::Point2f center;
+    cv::Mat frame;
+} image_data;
+
+std::unique_ptr<image_data> image_data_shared;
 
 typedef struct s_globals {
     cv::VideoCapture capture;
@@ -43,61 +53,132 @@ typedef struct s_globals {
 
 s_globals globals;
 
+std::mutex img_access_mutex;
+bool image_proccessing_alive;
+
+void init_glew(void)
+{
+    //
+    // Initialize all valid GL extensions with GLEW.
+    // Usable AFTER creating GL context!
+    //
+    {
+        GLenum glew_ret;
+        glew_ret = glewInit();
+        if (glew_ret != GLEW_OK)
+        {
+            std::cerr << "WGLEW failed with error: " << glewGetErrorString(glew_ret) << std::endl;
+            exit(EXIT_FAILURE);
+        }
+        else
+        {
+            std::cout << "GLEW successfully initialized to version: " << glewGetString(GLEW_VERSION) << std::endl;
+        }
+        // Platform specific. (Change to GLXEW or ELGEW if necessary.)
+        glew_ret = wglewInit();
+        if (glew_ret != GLEW_OK)
+        {
+            std::cerr << "WGLEW failed with error: " << glewGetErrorString(glew_ret) << std::endl;
+            exit(EXIT_FAILURE);
+        }
+        else
+        {
+            std::cout << "WGLEW successfully initialized platform specific functions." << std::endl;
+        }
+    }
+}
+
 int main()
 {
+    //init_glew();
     //cv::Mat frame = cv::imread("resources/HSV-MAP.png");
-    cv::Mat frame;
+
     globals.capture = cv::VideoCapture(cv::CAP_DSHOW);
-    if (!globals.capture.isOpened())
+    //globals.capture = cv::VideoCapture("resources/video.mkv");
+    if (!globals.capture.isOpened()) //pokud neni kamera otevřená 
     {
         std::cerr << "no camera" << std::endl;
         exit(EXIT_FAILURE);
     }
 
+
+    image_proccessing_alive = true;
+    std::thread t1(image_processing, "something");
+
+    cv::Mat frame;
+    cv::Point2f center_relative;
+    std::unique_ptr<image_data> img_data_local_prt;
+    while (true) {
+
+        img_access_mutex.lock();
+        if (image_data_shared) {
+            img_data_local_prt = std::move(image_data_shared);
+        }
+        img_access_mutex.unlock();
+
+        if (img_data_local_prt) {
+            frame = img_data_local_prt->frame;
+            center_relative = img_data_local_prt->center;
+            draw_cross_relative(frame, center_relative, 20);
+            cv::namedWindow("frame");
+            cv::imshow("frame", frame);
+            std::cout << "Stred relativne: " << center_relative << '\n';
+            img_data_local_prt.reset();
+        }
+        cv::waitKey(60);
+
+        if (!image_proccessing_alive) break;
+    }
+    t1.join();
+    std::cout << "Program ended, threads were joined." << '\n';
+}
+
+void image_processing(std::string string) {
+
     while (true)
     {
+        cv::Mat frame;
         globals.capture.read(frame);
         if (frame.empty())
         {
             std::cerr << "Device closed (or video at the end)" << std::endl;
             break;
         }
-        auto start = std::chrono::steady_clock::now();
 
         //cv::Point2f center_relative = find_center_Y(frame);
         cv::Point2f center_relative = find_center_HSV(frame);
 
-        std::cout << "Stred zarovky relativne: " << center_relative << '\n';
+        img_access_mutex.lock();
+        image_data_shared = std::make_unique<image_data>();
+        image_data_shared->frame = frame;
+        image_data_shared->center = center_relative;
+        img_access_mutex.unlock();
 
-        auto end = std::chrono::steady_clock::now();
-
-        draw_cross_relative(frame, center_relative, 20);
-        cv::namedWindow("frame");
-        cv::imshow("frame", frame);
-
-        std::chrono::duration<double> elapsed_seconds = end - start;
-        std::cout << "Elapsed time: " << elapsed_seconds.count() << "sec" << std::endl;
+        //auto end = std::chrono::steady_clock::now();
+        //std::chrono::duration<double> elapsed_seconds = end - start;
+        //std::cout << "Elapsed time: " << elapsed_seconds.count() << "sec" << std::endl;
+        //std::cout << "Hello World!";
 
         cv::waitKey(1);
-
-        //std::cout << "Hello World!";
     }
+    image_proccessing_alive = false;
 }
 
 cv::Point2f find_center_HSV(cv::Mat& frame)
 {
     cv::Mat frame_hsv;
-    cv:cvtColor(frame, frame_hsv, cv::COLOR_BGR2HSV);
+cv:cvtColor(frame, frame_hsv, cv::COLOR_BGR2HSV);
 
     //HSV range(0...180, 0...255, 0...255);
-    cv::Scalar lower_bound(40, 80, 80);
+    //45-75 = green
+    cv::Scalar lower_bound(45, 80, 80);
     cv::Scalar upper_bound(70, 255, 255);
     cv::Mat frame_treshold;
 
     cv::inRange(frame_hsv, lower_bound, upper_bound, frame_treshold);
 
-    cv::namedWindow("frametr");
-    cv::imshow("frametr", frame_treshold);
+    //cv::namedWindow("frametr");
+    //cv::imshow("frametr", frame_treshold);
 
     std::vector<cv::Point> white_pixels;
     cv::findNonZero(frame_treshold, white_pixels);
