@@ -48,13 +48,22 @@ typedef struct image_data {
 std::unique_ptr<image_data> image_data_shared;
 
 typedef struct s_globals {
+    GLFWwindow* window;
+    int height;
+    int width;
+    double app_start_time;
     cv::VideoCapture capture;
+    bool fullscreen;
+    int x = 0;
+    int y = 0;
 } s_globals;
 
 s_globals globals;
 
 std::mutex img_access_mutex;
 bool image_proccessing_alive;
+
+
 
 void init_glew(void)
 {
@@ -88,13 +97,133 @@ void init_glew(void)
     }
 }
 
+
+void error_callback(int error, const char* description)
+{
+    std::cerr << "Error: " << description << std::endl;
+}
+
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, GLFW_TRUE);
+    if (key == GLFW_KEY_W && action == GLFW_PRESS)
+        std::cout << "WWWWWWWWWW" << '\n';
+    if (key == GLFW_KEY_S && action == GLFW_PRESS)
+        std::cout << "SSSSSSSSSS" << '\n';
+    if (key == GLFW_KEY_A && action == GLFW_PRESS)
+        std::cout << "AAAAAAAAAA" << '\n';
+    if (key == GLFW_KEY_D && action == GLFW_PRESS)
+        std::cout << "DDDDDDDDDD" << '\n';
+    if (key == GLFW_KEY_F && action == GLFW_PRESS)
+        if (globals.fullscreen) {
+            glfwSetWindowMonitor(window, nullptr, globals.x, globals.y, 640, 480, 0);
+            globals.fullscreen = false;
+        }
+        else {
+            glfwGetWindowSize(window, &globals.x, &globals.y);
+            GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+            const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+            glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+            globals.fullscreen = true;
+        }
+
+}
+static void finalize(int code)
+{
+    // ...
+
+    // Close OpenGL window if opened and terminate GLFW  
+    if (globals.window)
+        glfwDestroyWindow(globals.window);
+    glfwTerminate();
+
+    // ...
+}
+static void init_glfw(void)
+{
+    //
+    // GLFW init.
+    //
+
+        // set error callback first
+    glfwSetErrorCallback(error_callback);
+
+    //initialize GLFW library
+    int glfw_ret = glfwInit();
+    if (!glfw_ret)
+    {
+        std::cerr << "GLFW init failed." << std::endl;
+        finalize(EXIT_FAILURE);
+    }
+
+    // Shader based, modern OpenGL (3.3 and higher)
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    //glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // only new functions
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE); // only old functions (for old tutorials etc.)
+
+    glfwWindowHint(GLFW_SAMPLES, 4); // 4x antialiasing
+    globals.window = glfwCreateWindow(800, 600, "OpenGL context", NULL, NULL);
+    if (!globals.window)
+    {
+        std::cerr << "GLFW window creation error." << std::endl;
+        finalize(EXIT_FAILURE);
+    }
+
+    // Get some GLFW info.
+    {
+        int major, minor, revision;
+
+        glfwGetVersion(&major, &minor, &revision);
+        std::cout << "Running GLFW " << major << '.' << minor << '.' << revision << std::endl;
+        std::cout << "Compiled against GLFW " << GLFW_VERSION_MAJOR << '.' << GLFW_VERSION_MINOR << '.' << GLFW_VERSION_REVISION << std::endl;
+    }
+
+    glfwMakeContextCurrent(globals.window);                                        // Set current window.
+    glfwGetFramebufferSize(globals.window, &globals.width, &globals.height);    // Get window size.
+    //glfwSwapInterval(0);                                                        // Set V-Sync OFF.
+    glfwSwapInterval(1);                                                        // Set V-Sync ON.
+
+
+    globals.app_start_time = glfwGetTime();                                        // Get start time.
+}
+
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+    if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
+        std::cout << "MOUSE_RIGHT" << '\n';
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+        std::cout << "MOUSE_LEFT" << '\n';
+}
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+    std::cout << "x offset: " << xoffset << " , y offset: " << yoffset << '\n';
+}
+
+void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
+{
+    std::cout << "x pos: " << xpos << " , y pos: " << ypos << '\n';
+}
+
+
+
+
+//===================================================== MAIN =====================================================
 int main()
 {
-    //init_glew();
+    init_glfw();
+    init_glew();
+
+    glfwSetCursorPosCallback(globals.window, cursor_position_callback);
+    glfwSetScrollCallback(globals.window, scroll_callback);
+    glfwSetMouseButtonCallback(globals.window, mouse_button_callback);
+    glfwSetKeyCallback(globals.window, key_callback);
     //cv::Mat frame = cv::imread("resources/HSV-MAP.png");
 
-    globals.capture = cv::VideoCapture(cv::CAP_DSHOW);
-    //globals.capture = cv::VideoCapture("resources/video.mkv");
+    //globals.capture = cv::VideoCapture(cv::CAP_DSHOW);
+    globals.capture = cv::VideoCapture("resources/video.mkv");
     if (!globals.capture.isOpened()) //pokud neni kamera otevřená 
     {
         std::cerr << "no camera" << std::endl;
@@ -253,3 +382,4 @@ void draw_cross_relative(cv::Mat& img, cv::Point2f center_relative, int size)
     cv::line(img, p1, p2, CV_RGB(0, 0, 255), 2);
     cv::line(img, p3, p4, CV_RGB(0, 0, 255), 2);
 }
+
