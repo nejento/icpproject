@@ -221,8 +221,8 @@ int main()
     glfwSetKeyCallback(globals.window, key_callback);
     //cv::Mat frame = cv::imread("resources/HSV-MAP.png");
 
-    globals.capture = cv::VideoCapture(cv::CAP_DSHOW);
-    //globals.capture = cv::VideoCapture("resources/video.mkv");
+    //globals.capture = cv::VideoCapture(cv::CAP_DSHOW);
+    globals.capture = cv::VideoCapture("resources/video.mkv");
     if (!globals.capture.isOpened()) //pokud neni kamera otevřená 
     {
         std::cerr << "no camera" << std::endl;
