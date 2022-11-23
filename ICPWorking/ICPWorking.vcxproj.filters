@@ -19,4 +19,12 @@
       <Filter>Zdrojové soubory</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Z:\ICP\11\01 shaders\basic.vert">
+      <Filter>Soubory zdrojů</Filter>
+    </None>
+    <None Include="Z:\ICP\11\01 shaders\basic.frag">
+      <Filter>Soubory zdrojů</Filter>
+    </None>
+  </ItemGroup>
 </Project>

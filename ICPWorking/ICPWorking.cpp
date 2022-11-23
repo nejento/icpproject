@@ -30,6 +30,7 @@
 #include <thread>
 #include <vector>
 #include <memory> //for smart pointers (unique_ptr)
+#include <fstream>
 
 
 void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void*
@@ -65,6 +66,48 @@ std::mutex img_access_mutex;
 bool image_proccessing_alive;
 
 
+std::string textFileRead(const std::string fn) {
+    std::ifstream file;
+    file.exceptions(std::ifstream::badbit);
+    std::stringstream ss;
+    try {
+        file.open(fn);
+        std::string content;
+        ss << file.rdbuf();
+    }
+    catch (const std::ifstream::failure& e) {
+        std::cerr << "Error opening file: " << fn <<
+            std::endl;
+        exit(EXIT_FAILURE);
+    }
+    return std::move(ss.str());
+}
+
+std::string getShaderInfoLog(const GLuint obj) {
+    int infologLength = 0;
+    std::string s;
+    glGetShaderiv(obj, GL_INFO_LOG_LENGTH, &infologLength);
+    if (infologLength > 0) {
+        std::vector<char> v(infologLength);
+        glGetShaderInfoLog(obj, infologLength, NULL,
+            v.data());
+        s.assign(begin(v), end(v));
+    }
+    return s;
+}
+
+std::string getProgramInfoLog(const GLuint obj) {
+    int infologLength = 0;
+    std::string s;
+    glGetProgramiv(obj, GL_INFO_LOG_LENGTH, &infologLength);
+    if (infologLength > 0) {
+        std::vector<char> v(infologLength);
+        glGetProgramInfoLog(obj, infologLength, NULL,
+            v.data());
+        s.assign(begin(v), end(v));
+    }
+    return s;
+}
 
 void init_glew(void)
 {
@@ -300,6 +343,8 @@ int main()
     glUseProgram(prog_h);
 
 
+    // Kamerování
+    //
     //cv::Mat frame = cv::imread("resources/HSV-MAP.png");
 
     //globals.capture = cv::VideoCapture(cv::CAP_DSHOW);
@@ -462,46 +507,3 @@ void draw_cross_relative(cv::Mat& img, cv::Point2f center_relative, int size)
     cv::line(img, p1, p2, CV_RGB(0, 0, 255), 2);
     cv::line(img, p3, p4, CV_RGB(0, 0, 255), 2);
 }
-
-//std::string textFileRead(const std::string fn) {
-//     std::ifstream file;
-//     file.exceptions(std::ifstream::badbit);
-//     std::stringstream ss;
-//     try {
-//         file.open(fn);
-//         std::string content;
-//         ss << file.rdbuf();
-//     }
-//     catch (const std::ifstream::failure& e) {
-//        std::cerr << "Error opening file: " << fn <<
-//        std::endl;
-//        exit(EXIT_FAILURE);
-//     }
-//     return std::move(ss.str());
-//}
-//
-//std::string getShaderInfoLog(const GLuint obj) {
-//    int infologLength = 0;
-//    std::string s;
-//    glGetShaderiv(obj, GL_INFO_LOG_LENGTH, &infologLength);
-//    if (infologLength > 0) {
-//        std::vector<char> v(infologLength);
-//        glGetShaderInfoLog(obj, infologLength, NULL, 
-//        v.data());
-//        s.assign(begin(v), end(v));
-//    }
-//    return s;
-//}
-//
-//std::string getProgramInfoLog(const GLuint obj) {
-//    int infologLength = 0;
-//    std::string s;
-//    glGetProgramiv(obj, GL_INFO_LOG_LENGTH, &infologLength);
-//    if (infologLength > 0) {
-//    std::vector<char> v(infologLength);
-//    glGetProgramInfoLog(obj, infologLength, NULL, 
-//    v.data());
-//    s.assign(begin(v), end(v));
-//    }
-//    return s;
-//}

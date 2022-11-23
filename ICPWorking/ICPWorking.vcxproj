@@ -145,6 +145,10 @@
   <ItemGroup>
     <ClCompile Include="ICPWorking.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Z:\ICP\11\01 shaders\basic.frag" />
+    <None Include="Z:\ICP\11\01 shaders\basic.vert" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
