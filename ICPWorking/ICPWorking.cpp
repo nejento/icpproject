@@ -343,48 +343,15 @@ int main()
     glUseProgram(prog_h);
 
 
-    // Kamerování
-    //
-    //cv::Mat frame = cv::imread("resources/HSV-MAP.png");
+    // Smyčka vyčištění a vykreslování
+    while (!glfwWindowShouldClose(globals.window)) {
+        glClear(GL_COLOR_BUFFER_BIT);
 
-    //globals.capture = cv::VideoCapture(cv::CAP_DSHOW);
-    //globals.capture = cv::VideoCapture("resources/video.mkv");
-    //if (!globals.capture.isOpened()) //pokud neni kamera otevřená 
-    //{
-    //    std::cerr << "no camera" << std::endl;
-    //    exit(EXIT_FAILURE);
-    //}
+        glfwSwapBuffers(globals.window);
+        glfwPollEvents();
+    }
 
 
-    //image_proccessing_alive = true;
-    //std::thread t1(image_processing, "something");
-
-    //cv::Mat frame;
-    //cv::Point2f center_relative;
-    //std::unique_ptr<image_data> img_data_local_prt;
-    //while (true) {
-
-    //    img_access_mutex.lock();
-    //    if (image_data_shared) {
-    //        img_data_local_prt = std::move(image_data_shared);
-    //    }
-    //    img_access_mutex.unlock();
-
-    //    if (img_data_local_prt) {
-    //        frame = img_data_local_prt->frame;
-    //        center_relative = img_data_local_prt->center;
-    //        draw_cross_relative(frame, center_relative, 20);
-    //        cv::namedWindow("frame");
-    //        cv::imshow("frame", frame);
-    //        std::cout << "Stred relativne: " << center_relative << '\n';
-    //        img_data_local_prt.reset();
-    //    }
-    //    cv::waitKey(60);
-
-    //    if (!image_proccessing_alive) break;
-    //}
-    //t1.join();
-    //std::cout << "Program ended, threads were joined." << '\n';
 }
 
 void image_processing(std::string string) {
