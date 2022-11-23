@@ -63,7 +63,49 @@ s_globals globals;
 std::mutex img_access_mutex;
 bool image_proccessing_alive;
 
-
+void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
+{
+    auto const src_str = [source]() {
+        switch (source)
+        {
+        case GL_DEBUG_SOURCE_API: return "API";
+        case GL_DEBUG_SOURCE_WINDOW_SYSTEM: return "WINDOW SYSTEM";
+        case GL_DEBUG_SOURCE_SHADER_COMPILER: return "SHADER COMPILER";
+        case GL_DEBUG_SOURCE_THIRD_PARTY: return "THIRD PARTY";
+        case GL_DEBUG_SOURCE_APPLICATION: return "APPLICATION";
+        case GL_DEBUG_SOURCE_OTHER: return "OTHER";
+        default: return "Unknown";
+        }
+    }();
+    auto const type_str = [type]() {
+        switch (type)
+        {
+        case GL_DEBUG_TYPE_ERROR: return "ERROR";
+        case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: return "DEPRECATED_BEHAVIOR";
+        case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR: return "UNDEFINED_BEHAVIOR";
+        case GL_DEBUG_TYPE_PORTABILITY: return "PORTABILITY";
+        case GL_DEBUG_TYPE_PERFORMANCE: return "PERFORMANCE";
+        case GL_DEBUG_TYPE_MARKER: return "MARKER";
+        case GL_DEBUG_TYPE_OTHER: return "OTHER";
+        default: return "Unknown";
+        }
+    }();
+    auto const severity_str = [severity]() {
+        switch (severity) {
+        case GL_DEBUG_SEVERITY_NOTIFICATION: return "NOTIFICATION";
+        case GL_DEBUG_SEVERITY_LOW: return "LOW";
+        case GL_DEBUG_SEVERITY_MEDIUM: return "MEDIUM";
+        case GL_DEBUG_SEVERITY_HIGH: return "HIGH";
+        default: return "Unknown";
+        }
+    }();
+    std::cout << "[GL CALLBACK]: " <<
+        "source = " << src_str <<
+        ", type = " << type_str <<
+        ", severity = " << severity_str <<
+        ", ID = '" << id << '\'' <<
+        ", message = '" << message << '\'' << std::endl;
+}
 
 void init_glew(void)
 {
@@ -94,6 +136,12 @@ void init_glew(void)
         {
             std::cout << "WGLEW successfully initialized platform specific functions." << std::endl;
         }
+    }
+    if (glfwExtensionSupported("GL_KHR_debug"))
+    {
+        glDebugMessageCallback(MessageCallback, 0);
+        glEnable(GL_DEBUG_OUTPUT);
+        std::cout << "GL_DEBUG enabled." << std::endl;
     }
 }
 
@@ -158,8 +206,8 @@ static void init_glfw(void)
     }
 
     // Shader based, modern OpenGL (3.3 and higher)
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
     //glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // only new functions
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE); // only old functions (for old tutorials etc.)
 
