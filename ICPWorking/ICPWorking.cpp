@@ -275,46 +275,71 @@ int main()
     glfwSetScrollCallback(globals.window, scroll_callback);
     glfwSetMouseButtonCallback(globals.window, mouse_button_callback);
     glfwSetKeyCallback(globals.window, key_callback);
+
+    // create and use shaders
+    GLuint VS_h, FS_h, prog_h;
+    VS_h = glCreateShader(GL_VERTEX_SHADER);
+    FS_h = glCreateShader(GL_FRAGMENT_SHADER);
+
+    std::string VSsrc = textFileRead("resources/basic.vert");
+    const char* VS_string = VSsrc.c_str();
+    std::string FSsrc = textFileRead("resources/basic.frag");
+    const char* FS_string = FSsrc.c_str();
+    glShaderSource(VS_h, 1, &VS_string, NULL);
+    glShaderSource(FS_h, 1, &FS_string, NULL);
+
+    glCompileShader(VS_h);
+    getShaderInfoLog(VS_h);
+    glCompileShader(FS_h);
+    getShaderInfoLog(FS_h);
+    prog_h = glCreateProgram();
+    glAttachShader(prog_h, VS_h);
+    glAttachShader(prog_h, FS_h);
+    glLinkProgram(prog_h);
+    getProgramInfoLog(prog_h);
+    glUseProgram(prog_h);
+
+
     //cv::Mat frame = cv::imread("resources/HSV-MAP.png");
 
     //globals.capture = cv::VideoCapture(cv::CAP_DSHOW);
-    globals.capture = cv::VideoCapture("resources/video.mkv");
-    if (!globals.capture.isOpened()) //pokud neni kamera otevřená 
-    {
-        std::cerr << "no camera" << std::endl;
-        exit(EXIT_FAILURE);
-    }
+    //globals.capture = cv::VideoCapture("resources/video.mkv");
+    //if (!globals.capture.isOpened()) //pokud neni kamera otevřená 
+    //{
+    //    std::cerr << "no camera" << std::endl;
+    //    exit(EXIT_FAILURE);
+    //}
 
 
-    image_proccessing_alive = true;
-    std::thread t1(image_processing, "something");
+    //image_proccessing_alive = true;
+    //std::thread t1(image_processing, "something");
 
-    cv::Mat frame;
-    cv::Point2f center_relative;
-    std::unique_ptr<image_data> img_data_local_prt;
-    while (true) {
+    //cv::Mat frame;
+    //cv::Point2f center_relative;
+    //std::unique_ptr<image_data> img_data_local_prt;
+    //while (true) {
 
-        img_access_mutex.lock();
-        if (image_data_shared) {
-            img_data_local_prt = std::move(image_data_shared);
-        }
-        img_access_mutex.unlock();
+    //    img_access_mutex.lock();
+    //    if (image_data_shared) {
+    //        img_data_local_prt = std::move(image_data_shared);
+    //    }
+    //    img_access_mutex.unlock();
 
-        if (img_data_local_prt) {
-            frame = img_data_local_prt->frame;
-            center_relative = img_data_local_prt->center;
-            draw_cross_relative(frame, center_relative, 20);
-            cv::namedWindow("frame");
-            cv::imshow("frame", frame);
-            std::cout << "Stred relativne: " << center_relative << '\n';
-            img_data_local_prt.reset();
-        }
-        cv::waitKey(60);
+    //    if (img_data_local_prt) {
+    //        frame = img_data_local_prt->frame;
+    //        center_relative = img_data_local_prt->center;
+    //        draw_cross_relative(frame, center_relative, 20);
+    //        cv::namedWindow("frame");
+    //        cv::imshow("frame", frame);
+    //        std::cout << "Stred relativne: " << center_relative << '\n';
+    //        img_data_local_prt.reset();
+    //    }
+    //    cv::waitKey(60);
 
-        if (!image_proccessing_alive) break;
-    }
-    t1.join();
-    std::cout << "Program ended, threads were joined." << '\n';
+    //    if (!image_proccessing_alive) break;
+    //}
+    //t1.join();
+    //std::cout << "Program ended, threads were joined." << '\n';
 }
 
 void image_processing(std::string string) {
@@ -438,3 +463,45 @@ void draw_cross_relative(cv::Mat& img, cv::Point2f center_relative, int size)
     cv::line(img, p3, p4, CV_RGB(0, 0, 255), 2);
 }
 
+//std::string textFileRead(const std::string fn) {
+//     std::ifstream file;
+//     file.exceptions(std::ifstream::badbit);
+//     std::stringstream ss;
+//     try {
+//         file.open(fn);
+//         std::string content;
+//         ss << file.rdbuf();
+//     }
+//     catch (const std::ifstream::failure& e) {
+//        std::cerr << "Error opening file: " << fn <<
+//        std::endl;
+//        exit(EXIT_FAILURE);
+//     }
+//     return std::move(ss.str());
+//}
+//
+//std::string getShaderInfoLog(const GLuint obj) {
+//    int infologLength = 0;
+//    std::string s;
+//    glGetShaderiv(obj, GL_INFO_LOG_LENGTH, &infologLength);
+//    if (infologLength > 0) {
+//        std::vector<char> v(infologLength);
+//        glGetShaderInfoLog(obj, infologLength, NULL, 
+//        v.data());
+//        s.assign(begin(v), end(v));
+//    }
+//    return s;
+//}
+//
+//std::string getProgramInfoLog(const GLuint obj) {
+//    int infologLength = 0;
+//    std::string s;
+//    glGetProgramiv(obj, GL_INFO_LOG_LENGTH, &infologLength);
+//    if (infologLength > 0) {
+//    std::vector<char> v(infologLength);
+//    glGetProgramInfoLog(obj, infologLength, NULL, 
+//    v.data());
+//    s.assign(begin(v), end(v));
+//    }
+//    return s;
+//}
