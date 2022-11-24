@@ -343,12 +343,108 @@ int main()
     glUseProgram(prog_h);
 
 
+    //Init VAO 1
+    struct vertex {
+        glm::vec3 position;
+        glm::vec3 color;
+    };
+    std::vector<vertex> vertices = {
+        {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}},
+        {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}},
+        {{0.0f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}}
+    };
+    std::vector<GLuint> indices = { 0,1,2 };
+    //GL names for Array and Buffers Objects
+    GLuint VAO1, VBO, EBO;
+    // Generate the VAO and VBO 
+    glGenVertexArrays(1, &VAO1);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+    // Bind VAO (set as the current)
+    glBindVertexArray(VAO1);
+    // Bind the VBO, set type as GL_ARRAY_BUFFER
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    // Fill-in data into the VBO
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(vertex), vertices.data(), GL_STATIC_DRAW);
+    // Bind EBO, set type GL_ELEMENT_ARRAY_BUFFER
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    // Fill-in data into the EBO
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
+    // Set Vertex Attribute to explain OpenGL how to interpret the VBO
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(0 + offsetof(vertex, position)));
+    // Enable the Vertex Attribute 0 = position
+    glEnableVertexAttribArray(0);
+    // Set end enable Vertex Attribute 1 = Texture Coordinates
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(0 + offsetof(vertex, color)));
+    glEnableVertexAttribArray(1);
+    // Bind VBO and VAO to 0 to prevent unintended modification 
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    
+
+    // -- Vygenerujte data pro kolečko uprostřed obrazovky --
+
+    //Druhý objekt VAO2
+    //Init VAO 1
+    struct vertex2 {
+        glm::vec3 position;
+    };
+    std::vector<vertex> vertices2;
+    std::vector<GLuint> indices2;
+    //GL names for Array and Buffers Objects
+    GLuint VAO2, VBO2, EBO2;
+    // Generate the VAO and VBO 
+    glGenVertexArrays(1, &VAO2);
+    glGenBuffers(1, &VBO2);
+    glGenBuffers(1, &EBO2);
+    // Bind VAO (set as the current)
+    glBindVertexArray(VAO2);
+    // Bind the VBO, set type as GL_ARRAY_BUFFER
+    glBindBuffer(GL_ARRAY_BUFFER, VBO2);
+    // Fill-in data into the VBO
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(vertex), vertices.data(), GL_STATIC_DRAW);
+    // Bind EBO, set type GL_ELEMENT_ARRAY_BUFFER
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO2);
+    // Fill-in data into the EBO
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
+    // Set Vertex Attribute to explain OpenGL how to interpret the VBO
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(0 + offsetof(vertex2, position)));
+    // Enable the Vertex Attribute 0 = position
+    glEnableVertexAttribArray(0);
+    // Set end enable Vertex Attribute 1 = Texture Coordinates
+    //glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(0 + offsetof(vertex2, color)));
+    //glEnableVertexAttribArray(1);
+    // Bind VBO and VAO to 0 to prevent unintended modification 
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+    // -- Vygenerujte data pro kolečko uprostřed obrazovky z 100 000 vertexů --
+
+
+
     // Smyčka vyčištění a vykreslování
     while (!glfwWindowShouldClose(globals.window)) {
         glClear(GL_COLOR_BUFFER_BIT);
 
+        //Trojuhelnik
+        {
+            glUseProgram(prog_h);
+            glBindVertexArray(VAO1);
+            glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+        }
+
+        //Kolečko
+        {
+            // Při odkomentování, bez úprav dle zadání, nebude fungovat samotné renderování trojúhelníku
+            //glUseProgram(prog2_h); //jiný program, bude potřeba upravit¡ už nemáme barvu
+            //glBindVertexArray(VAO2);
+            //glDrawElements(GL_TRIANGLE_FAN, indices.size(), GL_UNSIGNED_INT, 0);
+        }
+
         glfwSwapBuffers(globals.window);
-        glfwPollEvents();
+        glfwPollEvents();   
     }
 
 

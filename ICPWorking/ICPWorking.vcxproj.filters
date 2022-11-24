@@ -20,10 +20,16 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Z:\ICP\11\01 shaders\basic.vert">
+    <None Include="resources\basic.frag">
       <Filter>Soubory zdrojů</Filter>
     </None>
-    <None Include="Z:\ICP\11\01 shaders\basic.frag">
+    <None Include="resources\basic.vert">
+      <Filter>Soubory zdrojů</Filter>
+    </None>
+    <None Include="resources\basic2.frag">
+      <Filter>Soubory zdrojů</Filter>
+    </None>
+    <None Include="resources\basic2.vert">
       <Filter>Soubory zdrojů</Filter>
     </None>
   </ItemGroup>
