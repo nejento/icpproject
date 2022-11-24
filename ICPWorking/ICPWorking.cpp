@@ -30,6 +30,7 @@
 #include <thread>
 #include <vector>
 #include <memory> //for smart pointers (unique_ptr)
+#include <fstream>
 
 
 
@@ -256,7 +257,46 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 }
 
 
-
+std::string textFileRead(const std::string fn) {
+    std::ifstream file;
+    file.exceptions(std::ifstream::badbit);
+    std::stringstream ss;
+    try {
+        file.open(fn);
+        std::string content;
+        ss << file.rdbuf();
+    }
+    catch (const std::ifstream::failure& e) {
+        std::cerr << "Error opening file: " << fn <<
+            std::endl;
+        exit(EXIT_FAILURE);
+    }
+    return std::move(ss.str());
+}
+std::string getShaderInfoLog(const GLuint obj) {
+    int infologLength = 0;
+    std::string s;
+    glGetShaderiv(obj, GL_INFO_LOG_LENGTH, &infologLength);
+    if (infologLength > 0) {
+        std::vector<char> v(infologLength);
+        glGetShaderInfoLog(obj, infologLength, NULL,
+            v.data());
+        s.assign(begin(v), end(v));
+    }
+    return s;
+}
+std::string getProgramInfoLog(const GLuint obj) {
+    int infologLength = 0;
+    std::string s;
+    glGetProgramiv(obj, GL_INFO_LOG_LENGTH, &infologLength);
+    if (infologLength > 0) {
+        std::vector<char> v(infologLength);
+        glGetProgramInfoLog(obj, infologLength, NULL,
+            v.data());
+        s.assign(begin(v), end(v));
+    }
+    return s;
+}
 
 //===================================================== MAIN =====================================================
 int main()
@@ -268,10 +308,41 @@ int main()
     glfwSetScrollCallback(globals.window, scroll_callback);
     glfwSetMouseButtonCallback(globals.window, mouse_button_callback);
     glfwSetKeyCallback(globals.window, key_callback);
+
+
+
+    GLuint VS_h, FS_h, prog_h;
+    VS_h = glCreateShader(GL_VERTEX_SHADER);
+    FS_h = glCreateShader(GL_FRAGMENT_SHADER);
+
+    std::string VSsrc = textFileRead("resources/basic.vert");
+    const char* VS_string = VSsrc.c_str();
+    std::string FSsrc = textFileRead("resources/basic.frag");
+    const char* FS_string = FSsrc.c_str();
+    glShaderSource(VS_h, 1, &VS_string, NULL);
+    glShaderSource(FS_h, 1, &FS_string, NULL);
+
+    glCompileShader(VS_h);
+    getShaderInfoLog(VS_h);
+    glCompileShader(FS_h);
+    getShaderInfoLog(FS_h);
+    prog_h = glCreateProgram();
+    glAttachShader(prog_h, VS_h);
+    glAttachShader(prog_h, FS_h);
+    glLinkProgram(prog_h);
+    getProgramInfoLog(prog_h);
+    glUseProgram(prog_h);
+
+    while (!glfwWindowShouldClose(globals.window)) {
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        glfwSwapBuffers(globals.window);
+        glfwPollEvents();
+    }
     //cv::Mat frame = cv::imread("resources/HSV-MAP.png");
 
     //globals.capture = cv::VideoCapture(cv::CAP_DSHOW);
-    globals.capture = cv::VideoCapture("resources/video.mkv");
+    /*globals.capture = cv::VideoCapture("resources/video.mkv");
     if (!globals.capture.isOpened()) //pokud neni kamera otevřená 
     {
         std::cerr << "no camera" << std::endl;
@@ -307,7 +378,8 @@ int main()
         if (!image_proccessing_alive) break;
     }
     t1.join();
-    std::cout << "Program ended, threads were joined." << '\n';
+    std::cout << "Program ended, threads were joined." << '\n';*/
+    std::cout << "Program ended." << '\n';
 }
 
 void image_processing(std::string string) {

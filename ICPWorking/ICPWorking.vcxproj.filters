@@ -19,4 +19,17 @@
       <Filter>Zdrojové soubory</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="resource.h">
+      <Filter>Hlavičkové soubory</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="resources\basic.frag">
+      <Filter>Soubory zdrojů</Filter>
+    </None>
+    <None Include="resources\basic.vert">
+      <Filter>Soubory zdrojů</Filter>
+    </None>
+  </ItemGroup>
 </Project>
