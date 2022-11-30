@@ -25,6 +25,8 @@
 
 #include <GLFW/glfw3.h> //knihovna pro zálkladní obsulu systému (klávesnice/myš)
 #include <glm/glm.hpp>
+#include <glm/ext.hpp>
+#include <glm/common.hpp>
 
 #include <numeric>
 #include <thread>
@@ -41,6 +43,8 @@ void draw_cross(cv::Mat& img, int x, int y, int size);
 void image_processing(std::string string);
 cv::Point2f find_center_Y(cv::Mat& frame);
 cv::Point2f find_center_HSV(cv::Mat& frame);
+
+glm::vec4 color(1, 0, 0, 1);
 
 typedef struct image_data {
     cv::Point2f center;
@@ -213,6 +217,12 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         std::cout << "AAAAAAAAAA" << '\n';
     if (key == GLFW_KEY_D && action == GLFW_PRESS)
         std::cout << "DDDDDDDDDD" << '\n';
+    if (key == GLFW_KEY_R && action == GLFW_PRESS)
+        color = glm::vec4(1, 0, 0, 1);
+    if (key == GLFW_KEY_G && action == GLFW_PRESS)
+        color = glm::vec4(0, 1, 0, 1);
+    if (key == GLFW_KEY_B && action == GLFW_PRESS)
+        color = glm::vec4(0, 0, 1, 1);
     if (key == GLFW_KEY_F && action == GLFW_PRESS)
         if (globals.fullscreen) {
             glfwSetWindowMonitor(window, nullptr, globals.x, globals.y, 640, 480, 0);
@@ -425,12 +435,20 @@ int main()
 
 
     // Smyčka vyčištění a vykreslování
+    double last_fps = glfwGetTime();
+    int frame_cnt = 0;
+
     while (!glfwWindowShouldClose(globals.window)) {
         glClear(GL_COLOR_BUFFER_BIT);
 
         //Trojuhelnik
         {
             glUseProgram(prog_h);
+            GLuint loc = glGetUniformLocation(prog_h, "color");
+            
+            //glUniform4f(loc, 1, 0, 0, 1);
+            glUniform4fv(loc, 1, glm::value_ptr(color));
+
             glBindVertexArray(VAO1);
             glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
         }
@@ -444,7 +462,20 @@ int main()
         }
 
         glfwSwapBuffers(globals.window);
-        glfwPollEvents();   
+        glfwPollEvents();  
+        
+
+        //Frame counter
+        frame_cnt++;
+        {
+            double now = glfwGetTime();
+            if ((now - last_fps) > 1.0) {
+                std::cout << frame_cnt << " FPS\r";
+                frame_cnt = 0;
+                last_fps = now;
+            }
+        
+        }
     }
 
 
