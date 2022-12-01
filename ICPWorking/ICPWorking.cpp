@@ -6,6 +6,7 @@
 //funkce find_center_HSV
 // samostatné vlákno img_process_code
 //      dostane kameru
+//      dostane kameru
 /*      read file
     structira img_data_s
         Point2f
@@ -329,6 +330,13 @@ int main()
     glfwSetMouseButtonCallback(globals.window, mouse_button_callback);
     glfwSetKeyCallback(globals.window, key_callback);
 
+    //Enable Z buffer test
+    glEnable(GL_DEPTH_TEST);
+
+    glEnable(GL_CULL_FACE);
+
+
+
     // create and use shaders
     GLuint VS_h, FS_h, prog_h;
     VS_h = glCreateShader(GL_VERTEX_SHADER);
@@ -438,8 +446,31 @@ int main()
     double last_fps = glfwGetTime();
     int frame_cnt = 0;
 
+    int width, height;
+    glfwGetWindowSize(glfwGetCurrentContext(), &width, &height);
+
+    // transformations
+    // projection & viewport
+    {
+
+        float ratio = static_cast<float>(width) / height;
+
+        glm::mat4 projectionMatrix = glm::perspective(
+            glm::radians(60.0f), // The vertical Field of View, in radians: the amount of "zoom". Think "camera lens". Usually between 90� (extra wide) and 30� (quite zoomed in)
+            ratio,			     // Aspect Ratio. Depends on the size of your window.
+            0.1f,                // Near clipping plane. Keep as big as possible, or you'll get precision issues.
+            20000.0f              // Far clipping plane. Keep as little as possible.
+        );
+
+        //set uniform for shaders - projection matrix
+        glUniformMatrix4fv(glGetUniformLocation(prog_h, "uP_m"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+
+        // set visible area
+        glViewport(0, 0, width, height);
+    }
+
     while (!glfwWindowShouldClose(globals.window)) {
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         //Trojuhelnik
         {
@@ -448,6 +479,28 @@ int main()
             
             //glUniform4f(loc, 1, 0, 0, 1);
             glUniform4fv(loc, 1, glm::value_ptr(color));
+
+            // View matrix
+            glm::mat4 v_m = glm::lookAt(glm::vec3(0.0f, 0.0f, 10.0f), //position of camera
+                glm::vec3(0.0f, 0.0f, 0.0f), //where to look
+                glm::vec3(0, 1, 0)  //UP direction
+            );
+            glUniformMatrix4fv(glGetUniformLocation(prog_h, "uV_m"), 1, GL_FALSE, glm::value_ptr(v_m));
+
+            
+            // Model Matrix
+            glm::mat4 m_m = glm::identity<glm::mat4>();
+            //m_m = glm::translate(m_m, glm::vec3(width / 2.0, height / 2.0, 0.0));
+            m_m = glm::scale(m_m, glm::vec3(5.0f));
+            //m_m = glm::rotate(m_m, glm::radians(100.0f, ))
+
+            // modify Model matrix and send to shaders
+            // rotate slowly
+            //m_m = glm::rotate(m_m, glm::radians(100.0f * (float)glfwGetTime()), glm::vec3(0.0f, 0.1f, 0.0f));
+            
+            glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
+            // =====================================================================================================
+
 
             glBindVertexArray(VAO1);
             glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
