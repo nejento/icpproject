@@ -31,5 +31,11 @@
     <None Include="resources\basic.vert">
       <Filter>Soubory zdrojů</Filter>
     </None>
+    <None Include="resources\basicFan.frag">
+      <Filter>Soubory zdrojů</Filter>
+    </None>
+    <None Include="resources\basicFan.vert">
+      <Filter>Soubory zdrojů</Filter>
+    </None>
   </ItemGroup>
 </Project>

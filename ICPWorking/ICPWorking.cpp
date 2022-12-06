@@ -25,6 +25,8 @@
 
 #include <GLFW/glfw3.h> //knihovna pro zálkladní obsulu systému (klávesnice/myš)
 #include <glm/glm.hpp>
+#include <glm/ext.hpp>
+#include <glm/glm.hpp>
 
 #include <numeric>
 #include <thread>
@@ -60,7 +62,7 @@ typedef struct s_globals {
 } s_globals;
 
 s_globals globals;
-
+glm::vec4 color = { 1.0f, 1.0f, 1.0f, 0.0f };
 std::mutex img_access_mutex;
 bool image_proccessing_alive;
 
@@ -154,16 +156,22 @@ void error_callback(int error, const char* description)
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
+    if (key == GLFW_KEY_B && action == GLFW_PRESS)
+        color = { 0.0f, 0.0f, 1.0f, 0.0f };
+    if (key == GLFW_KEY_R && action == GLFW_PRESS)
+        color = { 1.0f, 0.0f, 0.0f, 0.0f };
+    if (key == GLFW_KEY_G && action == GLFW_PRESS)
+        color = { 0.0f, 1.0f, 0.0f, 0.0f };
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GLFW_TRUE);
     if (key == GLFW_KEY_W && action == GLFW_PRESS)
-        std::cout << "WWWWWWWWWW" << '\n';
+        std::cout << "W" << '\n';
     if (key == GLFW_KEY_S && action == GLFW_PRESS)
-        std::cout << "SSSSSSSSSS" << '\n';
+        std::cout << "S" << '\n';
     if (key == GLFW_KEY_A && action == GLFW_PRESS)
-        std::cout << "AAAAAAAAAA" << '\n';
+        std::cout << "A" << '\n';
     if (key == GLFW_KEY_D && action == GLFW_PRESS)
-        std::cout << "DDDDDDDDDD" << '\n';
+        std::cout << "D" << '\n';
     if (key == GLFW_KEY_F && action == GLFW_PRESS)
         if (globals.fullscreen) {
             glfwSetWindowMonitor(window, nullptr, globals.x, globals.y, 640, 480, 0);
@@ -310,6 +318,9 @@ int main()
     glfwSetKeyCallback(globals.window, key_callback);
 
 
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+    glfwSwapInterval(1);//zapnutí Vsync
 
     GLuint VS_h, FS_h, prog_h;
     VS_h = glCreateShader(GL_VERTEX_SHADER);
@@ -333,11 +344,185 @@ int main()
     getProgramInfoLog(prog_h);
     glUseProgram(prog_h);
 
-    while (!glfwWindowShouldClose(globals.window)) {
-        glClear(GL_COLOR_BUFFER_BIT);
 
+    GLuint VS_h2, FS_h2, prog_h2;
+    VS_h2 = glCreateShader(GL_VERTEX_SHADER);
+    FS_h2 = glCreateShader(GL_FRAGMENT_SHADER);
+
+    std::string VSsrc_fan = textFileRead("resources/basicFan.vert");
+    const char* VS_string_fan = VSsrc_fan.c_str();
+    std::string FSsrc_fan = textFileRead("resources/basicFan.frag");
+    const char* FS_string_fan = FSsrc_fan.c_str();
+    glShaderSource(VS_h2, 1, &VS_string_fan, NULL);
+    glShaderSource(FS_h2, 1, &FS_string_fan, NULL);
+
+    glCompileShader(VS_h2);
+    getShaderInfoLog(VS_h2);
+    glCompileShader(FS_h2);
+    getShaderInfoLog(FS_h2);
+    prog_h2 = glCreateProgram();
+    glAttachShader(prog_h2, VS_h2);
+    glAttachShader(prog_h2, FS_h2);
+    glLinkProgram(prog_h2);
+    getProgramInfoLog(prog_h2);
+    glUseProgram(prog_h2);
+
+
+    //init VAO1
+    struct vertex {
+        glm::vec3 position;
+        glm::vec3 color;
+
+    };
+    std::vector<vertex> vertices = {
+        {{-0.5f, -0.5f, 0.0f},{1.0f,0.0f,0.0f}}, //pozice + barva vrcholu
+        {{0.5f, -0.5f, 0.0f},{0.0f,1.0f,0.0f}},
+        {{0.0f, 0.5f, 0.0f},{0.0f,0.0f,1.0f}}
+    };
+
+    std::vector<GLuint> indices = {0, 1, 2};
+    GLuint VAO1; 
+    
+    {
+        GLuint VBO, EBO;
+        //GL names for Array and Buffers Objects
+    // Generate the VAO and VBO
+        glGenVertexArrays(1, &VAO1);
+        glGenBuffers(1, &VBO);
+        glGenBuffers(1, &EBO);
+        // Bind VAO (set as the current)
+        glBindVertexArray(VAO1);
+        // Bind the VBO, set type as GL_ARRAY_BUFFER
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        // Fill-in data into the VBO
+        glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(vertex), vertices.data(), GL_STATIC_DRAW);
+        // Bind EBO, set type GL_ELEMENT_ARRAY_BUFFER
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        // Fill-in data into the EBO
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
+        // Set Vertex Attribute to explain OpenGL how to interpret the VBO
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(0 + offsetof(vertex, position)));
+        // Enable the Vertex Attribute 0 = position
+        glEnableVertexAttribArray(0);
+        // Set end enable Vertex Attribute 1 = Texture Coordinates
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(0 + offsetof(vertex, color)));
+        glEnableVertexAttribArray(1);
+        // Bind VBO and VAO to 0 to prevent unintended modification
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    }
+
+    struct vertex2 {
+        glm::vec3 position;
+
+    };
+    //vygenerujte data pro kolecko uprostred obrazovky (triangle fan) z 100 000 vertexu
+    std::vector<vertex2> vertices2 = {};
+    std::vector<GLuint> indices2 = {};
+    
+    int vertexCount = 100000;
+    float angleStep = 2*3.14159265358979323846f/ vertexCount;
+    float magnitude = 0.5f;
+
+    for (int i = 0; i < vertexCount; i++) {
+        auto polar = std::polar(magnitude, angleStep * i);
+        vertex2 temp_ver = {{polar._Val[0], polar._Val[1], 0.0f}};
+        //std::cout << "Vertices" << polar._Val[0]<< ", "<< polar._Val[1] << '\n';
+        vertices2.push_back(temp_ver);
+        indices2.push_back(i+1);
+    }
+    vertices2.push_back({ {0.0f, 0.0f, 0.0f} });
+    indices2.push_back(0);
+    
+    
+    GLuint VAO2;
+    {
+        GLuint VBO, EBO;
+        //GL names for Array and Buffers Objects
+    // Generate the VAO and VBO
+        glGenVertexArrays(1, &VAO2);
+        glGenBuffers(1, &VBO);
+        glGenBuffers(1, &EBO);
+        // Bind VAO (set as the current)
+        glBindVertexArray(VAO2);
+        // Bind the VBO, set type as GL_ARRAY_BUFFER
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        // Fill-in data into the VBO
+        glBufferData(GL_ARRAY_BUFFER, vertices2.size() * sizeof(vertex2), vertices2.data(), GL_STATIC_DRAW);
+        // Bind EBO, set type GL_ELEMENT_ARRAY_BUFFER
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        // Fill-in data into the EBO
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices2.size() * sizeof(GLuint), indices2.data(), GL_STATIC_DRAW);
+        // Set Vertex Attribute to explain OpenGL how to interpret the VBO
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex2), (void*)(0 + offsetof(vertex2, position)));
+        // Enable the Vertex Attribute 0 = position
+        glEnableVertexAttribArray(0);
+        // Bind VBO and VAO to 0 to prevent unintended modification
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    }
+
+    
+    int width, height;
+    glfwGetWindowSize(glfwGetCurrentContext(), &width, &height);
+
+    float ratio = static_cast<float>(width) / height;
+
+    glm::mat4 projectionMatrix = glm::perspective(
+        glm::radians(60.0f), // The vertical Field of View, in radians: the amount of "zoom". Think "camera lens". Usually between 90° (extra wide) and 30° (quite zoomed in)
+        ratio,			     // Aspect Ratio. Depends on the size of your window.
+        0.1f,                // Near clipping plane. Keep as big as possible, or you'll get precision issues.
+        20000.0f              // Far clipping plane. Keep as little as possible.
+    );
+
+    //set uniform for shaders - projection matrix
+    glUniformMatrix4fv(glGetUniformLocation(prog_h, "uProj_M"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+
+    // set visible area
+    glViewport(0, 0, width, height);
+    
+
+    int frame_cnt = 0;
+    while(!glfwWindowShouldClose(globals.window)) {
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        //trojuhelnik
+        {
+            glUseProgram(prog_h);
+            glBindVertexArray(VAO1);
+            
+            
+            glm::mat4 v_m = glm::lookAt(glm::vec3(0.0f, 0.0f, 10.0f), //position of camera
+                glm::vec3(0.0f, 0.0f, 0.0f), //where to look
+                glm::vec3(0, 1, 0)  //UP direction
+            );
+            
+            // Model Matrix
+            glm::mat4 m_m = glm::identity<glm::mat4>();
+            //m_m = glm::translate(m_m, glm::vec3(width / 2, height / 2, 0.0));
+            m_m = glm::scale(m_m, glm::vec3(5.0f));
+            m_m = glm::rotate(m_m, glm::radians(100.0f * (float)glfwGetTime()), glm::vec3(0.0f, 0.1f, 0.0f));
+            glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
+            // =====================================================================================================
+            glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+        }
+
+        //kruh
+        {
+            glUseProgram(prog_h2); // nutne upravit, uz nemame barvu => nový shared
+
+            GLuint loc = glGetUniformLocation(prog_h2, "color");
+            glUniform4fv(loc, 1, glm::value_ptr(color));
+
+            
+
+            glBindVertexArray(VAO2);
+            glDrawElements(GL_TRIANGLE_FAN, indices2.size(), GL_UNSIGNED_INT, 0);
+        }
         glfwSwapBuffers(globals.window);
         glfwPollEvents();
+
     }
     //cv::Mat frame = cv::imread("resources/HSV-MAP.png");
 
