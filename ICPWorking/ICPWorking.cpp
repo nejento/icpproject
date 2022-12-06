@@ -367,6 +367,28 @@ int main()
     getProgramInfoLog(prog_h2);
     glUseProgram(prog_h2);
 
+    GLuint VS_h_chess, FS_h_chess, prog_h_chess;
+    VS_h_chess = glCreateShader(GL_VERTEX_SHADER);
+    FS_h_chess = glCreateShader(GL_FRAGMENT_SHADER);
+
+    std::string VSsrc_chess = textFileRead("resources/basicChess.vert");
+    const char* VS_string_chess = VSsrc_chess.c_str();
+    std::string FSsrc_chess = textFileRead("resources/basicChess.frag");
+    const char* FS_string_chess = FSsrc_chess.c_str();
+    glShaderSource(VS_h_chess, 1, &VS_string_chess, NULL);
+    glShaderSource(FS_h_chess, 1, &FS_string_chess, NULL);
+
+    glCompileShader(VS_h_chess);
+    getShaderInfoLog(VS_h_chess);
+    glCompileShader(FS_h_chess);
+    getShaderInfoLog(FS_h_chess);
+    prog_h_chess = glCreateProgram();
+    glAttachShader(prog_h_chess, VS_h_chess);
+    glAttachShader(prog_h_chess, FS_h_chess);
+    glLinkProgram(prog_h_chess);
+    getProgramInfoLog(prog_h_chess);
+    glUseProgram(prog_h_chess);
+
 
     //init VAO1
     struct vertex {
@@ -413,6 +435,10 @@ int main()
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     }
 
+
+
+
+    //==================KRUH==================
     struct vertex2 {
         glm::vec3 position;
 
@@ -465,6 +491,75 @@ int main()
     }
 
     
+    //==================SACHOVNICE==================
+
+    //vygenerujte data pro kolecko uprostred obrazovky (triangle fan) z 100 000 vertexu
+    std::vector<vertex> vertices_chess = {};
+    std::vector<GLuint> indices_chess = {};
+
+    int min_x = -1;
+    int max_x = 1;
+    int min_y = -1;
+    int max_y = 1;
+    int ver_count = 0;
+
+    float square_size = 0.1f;
+    glm::vec3 color_chess;
+    bool is_black = true;
+    for (float i = min_x; i < max_x; i+=square_size) {
+        is_black = !is_black;
+        for (float j = min_y; j < max_y; j +=square_size)
+        {
+            if (is_black) {
+                color_chess = { 1.0f, 0.0f, 0.0f };
+            }
+            else color_chess = { 1.0f, 1.0f, 1.0f };
+            is_black = !is_black;
+            
+            vertices_chess.push_back({{i            , j, 0}, color_chess });
+            vertices_chess.push_back({{i+square_size, j, 0}, color_chess });
+            vertices_chess.push_back({{i, j+square_size, 0}, color_chess });
+            
+            vertices_chess.push_back({{i+square_size,j+ square_size, 0}, color_chess });
+            vertices_chess.push_back({{i, j+square_size, 0}, color_chess });
+            vertices_chess.push_back({{i+square_size, j, 0}, color_chess });
+            
+            for (int ver = 0; ver < 6; ver++) {
+                indices_chess.push_back(ver_count++);
+            }
+        }   
+    }
+    GLuint VAO_chess;
+    {
+        GLuint VBO, EBO;
+        //GL names for Array and Buffers Objects
+        // Generate the VAO and VBO
+        glGenVertexArrays(1, &VAO_chess);
+        glGenBuffers(1, &VBO);
+        glGenBuffers(1, &EBO);
+        // Bind VAO (set as the current)
+        glBindVertexArray(VAO_chess);
+        // Bind the VBO, set type as GL_ARRAY_BUFFER
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        // Fill-in data into the VBO
+        glBufferData(GL_ARRAY_BUFFER, vertices_chess.size() * sizeof(vertex), vertices_chess.data(), GL_STATIC_DRAW);
+        // Bind EBO, set type GL_ELEMENT_ARRAY_BUFFER
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        // Fill-in data into the EBO
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_chess.size() * sizeof(GLuint), indices_chess.data(), GL_STATIC_DRAW);
+        // Set Vertex Attribute to explain OpenGL how to interpret the VBO
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(0 + offsetof(vertex, position)));
+        // Enable the Vertex Attribute 0 = position
+        glEnableVertexAttribArray(0);
+        // Set end enable Vertex Attribute 1 = Texture Coordinates
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(0 + offsetof(vertex, color)));
+        glEnableVertexAttribArray(1);
+        // Bind VBO and VAO to 0 to prevent unintended modification
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    }
+
     int width, height;
     glfwGetWindowSize(glfwGetCurrentContext(), &width, &height);
 
@@ -474,7 +569,7 @@ int main()
         glm::radians(60.0f), // The vertical Field of View, in radians: the amount of "zoom". Think "camera lens". Usually between 90° (extra wide) and 30° (quite zoomed in)
         ratio,			     // Aspect Ratio. Depends on the size of your window.
         0.1f,                // Near clipping plane. Keep as big as possible, or you'll get precision issues.
-        20000.0f              // Far clipping plane. Keep as little as possible.
+        20000.0f             // Far clipping plane. Keep as little as possible.
     );
 
     //set uniform for shaders - projection matrix
@@ -487,7 +582,7 @@ int main()
     int frame_cnt = 0;
     while(!glfwWindowShouldClose(globals.window)) {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        //trojuhelnik
+       /* //trojuhelnik
         {
             glUseProgram(prog_h);
             glBindVertexArray(VAO1);
@@ -519,7 +614,28 @@ int main()
 
             glBindVertexArray(VAO2);
             glDrawElements(GL_TRIANGLE_FAN, indices2.size(), GL_UNSIGNED_INT, 0);
+        }*/
+
+        {
+            glUseProgram(prog_h);
+            glBindVertexArray(VAO_chess);
+
+
+            glm::mat4 v_m = glm::lookAt(glm::vec3(0.0f, 0.0f, 10.0f), //position of camera
+                glm::vec3(0.0f, 0.0f, 0.0f), //where to look
+                glm::vec3(0, 1, 0)  //UP direction
+            );
+
+            // Model Matrix
+            glm::mat4 m_m = glm::identity<glm::mat4>();
+            //m_m = glm::translate(m_m, glm::vec3(width / 2, height / 2, 0.0));
+            //m_m = glm::scale(m_m, glm::vec3(5.0f));
+            //m_m = glm::rotate(m_m, glm::radians(100.0f * (float)glfwGetTime()), glm::vec3(0.0f, 0.1f, 0.0f));
+            glUniformMatrix4fv(glGetUniformLocation(prog_h_chess, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
+            // =====================================================================================================
+            glDrawElements(GL_TRIANGLES, indices_chess.size(), GL_UNSIGNED_INT, 0);
         }
+
         glfwSwapBuffers(globals.window);
         glfwPollEvents();
 

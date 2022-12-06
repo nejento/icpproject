@@ -151,6 +151,8 @@
   <ItemGroup>
     <None Include="resources\basic.frag" />
     <None Include="resources\basic.vert" />
+    <None Include="resources\basicChess.frag" />
+    <None Include="resources\basicChess.vert" />
     <None Include="resources\basicFan.frag" />
     <None Include="resources\basicFan.vert" />
   </ItemGroup>

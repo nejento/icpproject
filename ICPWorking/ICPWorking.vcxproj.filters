@@ -37,5 +37,11 @@
     <None Include="resources\basicFan.vert">
       <Filter>Soubory zdrojů</Filter>
     </None>
+    <None Include="resources\basicChess.frag">
+      <Filter>Soubory zdrojů</Filter>
+    </None>
+    <None Include="resources\basicChess.vert">
+      <Filter>Soubory zdrojů</Filter>
+    </None>
   </ItemGroup>
 </Project>
