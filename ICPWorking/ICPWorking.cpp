@@ -221,7 +221,7 @@ static void init_glfw(void)
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE); // only old functions (for old tutorials etc.)
 
     glfwWindowHint(GLFW_SAMPLES, 4); // 4x antialiasing
-    globals.window = glfwCreateWindow(800, 600, "OpenGL context", NULL, NULL);
+    globals.window = glfwCreateWindow(800, 800, "OpenGL context", NULL, NULL);
     if (!globals.window)
     {
         std::cerr << "GLFW window creation error." << std::endl;
@@ -582,7 +582,7 @@ int main()
     int frame_cnt = 0;
     while(!glfwWindowShouldClose(globals.window)) {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-       /* //trojuhelnik
+       //trojuhelnik
         {
             glUseProgram(prog_h);
             glBindVertexArray(VAO1);
@@ -596,13 +596,13 @@ int main()
             // Model Matrix
             glm::mat4 m_m = glm::identity<glm::mat4>();
             //m_m = glm::translate(m_m, glm::vec3(width / 2, height / 2, 0.0));
-            m_m = glm::scale(m_m, glm::vec3(5.0f));
-            m_m = glm::rotate(m_m, glm::radians(100.0f * (float)glfwGetTime()), glm::vec3(0.0f, 0.1f, 0.0f));
+            //m_m = glm::scale(m_m, glm::vec3(5.0f));
+            m_m = glm::rotate(m_m, glm::radians(50.0f * (float)glfwGetTime()), glm::vec3(0.3f, 0.1f, 0.5f));
             glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
             // =====================================================================================================
             glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
         }
-
+        /*
         //kruh
         {
             glUseProgram(prog_h2); // nutne upravit, uz nemame barvu => nový shared
@@ -630,7 +630,7 @@ int main()
             glm::mat4 m_m = glm::identity<glm::mat4>();
             //m_m = glm::translate(m_m, glm::vec3(width / 2, height / 2, 0.0));
             //m_m = glm::scale(m_m, glm::vec3(5.0f));
-            //m_m = glm::rotate(m_m, glm::radians(100.0f * (float)glfwGetTime()), glm::vec3(0.0f, 0.1f, 0.0f));
+            m_m = glm::rotate(m_m, glm::radians(100.0f * (float)glfwGetTime()), glm::vec3(0.0f, 0.1f, 0.0f));
             glUniformMatrix4fv(glGetUniformLocation(prog_h_chess, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
             // =====================================================================================================
             glDrawElements(GL_TRIANGLES, indices_chess.size(), GL_UNSIGNED_INT, 0);
