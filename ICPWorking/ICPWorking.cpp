@@ -607,6 +607,11 @@ int main()
             glm::vec3(0, 1, 0)  //UP direction
         );
 
+        //subaru car
+        {
+           //do model rendering here (but not loading from file)
+        }
+
 
         //konvicka
         {
