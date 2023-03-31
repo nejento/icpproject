@@ -1,26 +1,8 @@
-﻿
-// cv02.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
-
-
-//funkce find_center_HSV
-// samostatné vlákno img_process_code
-//      dostane kameru
-/*      read file
-    structira img_data_s
-        Point2f
-        Mat frame - data snímku
-    unique_pnt na img_data_s (muze na to ukazovat jen jedna promena)
-        nidky se tak obě vlákna nedostanou naraz do toho
-        zmena pointeru( frame.copyTo(img_data_local -> img_data_local->frame))
-
-
-*/
-#include <iostream>
+﻿#include <iostream>
 #include <chrono>
 #include <opencv2/opencv.hpp>
 
-#include <GL/glew.h> //pro jednoodušší práci s extentions 
+#include <GL/glew.h> //pro jednodušší práci s extentions 
 #include <GL/wglew.h> 
 
 #include <GLFW/glfw3.h> //knihovna pro zálkladní obsulu systému (klávesnice/myš)
@@ -34,8 +16,10 @@
 #include <memory> //for smart pointers (unique_ptr)
 #include <fstream>
 
+#include "OBJloader.cpp"
 
 
+void run_2D_raster_processing();
 void draw_cross_relative(cv::Mat& img, cv::Point2f center_relative, int size);
 void draw_cross(cv::Mat& img, int x, int y, int size);
 
@@ -65,6 +49,12 @@ s_globals globals;
 glm::vec4 color = { 1.0f, 1.0f, 1.0f, 0.0f };
 std::mutex img_access_mutex;
 bool image_proccessing_alive;
+glm::vec3 player_position(0.0f, 0.0f, 0.2f);
+glm::vec3 where_to_look(0.0f, 0.0f, 0.0f);
+float cameraStep_size = 0.9;
+
+int camera_movement_x = 0;
+int camera_movement_z = 0;
 
 void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
 {
@@ -164,17 +154,25 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         color = { 0.0f, 1.0f, 0.0f, 0.0f };
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GLFW_TRUE);
+    
     if (key == GLFW_KEY_W && action == GLFW_PRESS)
-        std::cout << "W" << '\n';
+        camera_movement_z = -1;
     if (key == GLFW_KEY_S && action == GLFW_PRESS)
-        std::cout << "S" << '\n';
+        camera_movement_z = +1;
     if (key == GLFW_KEY_A && action == GLFW_PRESS)
-        std::cout << "A" << '\n';
+        camera_movement_x = -1;
     if (key == GLFW_KEY_D && action == GLFW_PRESS)
-        std::cout << "D" << '\n';
+        camera_movement_x = +1;
+
+    if ((key == GLFW_KEY_W|| key == GLFW_KEY_S) && action == GLFW_RELEASE)
+        camera_movement_z = 0;
+    if ((key == GLFW_KEY_A || key == GLFW_KEY_D) && action == GLFW_RELEASE)
+        camera_movement_x = 0;
+
+
     if (key == GLFW_KEY_F && action == GLFW_PRESS)
         if (globals.fullscreen) {
-            glfwSetWindowMonitor(window, nullptr, globals.x, globals.y, 640, 480, 0);
+            glfwSetWindowMonitor(window, nullptr, globals.x, globals.y, 800, 800, 0);
             globals.fullscreen = false;
         }
         else {
@@ -203,7 +201,7 @@ static void init_glfw(void)
     // GLFW init.
     //
 
-        // set error callback first
+   // set error callback first
     glfwSetErrorCallback(error_callback);
 
     //initialize GLFW library
@@ -236,7 +234,6 @@ static void init_glfw(void)
         std::cout << "Running GLFW " << major << '.' << minor << '.' << revision << std::endl;
         std::cout << "Compiled against GLFW " << GLFW_VERSION_MAJOR << '.' << GLFW_VERSION_MINOR << '.' << GLFW_VERSION_REVISION << std::endl;
     }
-
     glfwMakeContextCurrent(globals.window);                                        // Set current window.
     glfwGetFramebufferSize(globals.window, &globals.width, &globals.height);    // Get window size.
     //glfwSwapInterval(0);                                                        // Set V-Sync OFF.
@@ -309,6 +306,9 @@ std::string getProgramInfoLog(const GLuint obj) {
 //===================================================== MAIN =====================================================
 int main()
 {
+    //odkomentuj toto aby jsi spustil 2D raster tracker
+    //run_2D_raster_processing();
+
     init_glfw();
     init_glew();
 
@@ -323,71 +323,78 @@ int main()
     glfwSwapInterval(1);//zapnutí Vsync
 
     GLuint VS_h, FS_h, prog_h;
-    VS_h = glCreateShader(GL_VERTEX_SHADER);
-    FS_h = glCreateShader(GL_FRAGMENT_SHADER);
+    //prog_h set up
+    {
+        VS_h = glCreateShader(GL_VERTEX_SHADER);
+        FS_h = glCreateShader(GL_FRAGMENT_SHADER);
 
-    std::string VSsrc = textFileRead("resources/basic.vert");
-    const char* VS_string = VSsrc.c_str();
-    std::string FSsrc = textFileRead("resources/basic.frag");
-    const char* FS_string = FSsrc.c_str();
-    glShaderSource(VS_h, 1, &VS_string, NULL);
-    glShaderSource(FS_h, 1, &FS_string, NULL);
+        std::string VSsrc = textFileRead("resources/basic.vert");
+        const char* VS_string = VSsrc.c_str();
+        std::string FSsrc = textFileRead("resources/basic.frag");
+        const char* FS_string = FSsrc.c_str();
+        glShaderSource(VS_h, 1, &VS_string, NULL);
+        glShaderSource(FS_h, 1, &FS_string, NULL);
 
-    glCompileShader(VS_h);
-    getShaderInfoLog(VS_h);
-    glCompileShader(FS_h);
-    getShaderInfoLog(FS_h);
-    prog_h = glCreateProgram();
-    glAttachShader(prog_h, VS_h);
-    glAttachShader(prog_h, FS_h);
-    glLinkProgram(prog_h);
-    getProgramInfoLog(prog_h);
-    glUseProgram(prog_h);
-
+        glCompileShader(VS_h);
+        getShaderInfoLog(VS_h);
+        glCompileShader(FS_h);
+        getShaderInfoLog(FS_h);
+        prog_h = glCreateProgram();
+        glAttachShader(prog_h, VS_h);
+        glAttachShader(prog_h, FS_h);
+        glLinkProgram(prog_h);
+        getProgramInfoLog(prog_h);
+        glUseProgram(prog_h);
+    }
 
     GLuint VS_h2, FS_h2, prog_h2;
-    VS_h2 = glCreateShader(GL_VERTEX_SHADER);
-    FS_h2 = glCreateShader(GL_FRAGMENT_SHADER);
+    //prog_h2 set up
+    {
+        VS_h2 = glCreateShader(GL_VERTEX_SHADER);
+        FS_h2 = glCreateShader(GL_FRAGMENT_SHADER);
 
-    std::string VSsrc_fan = textFileRead("resources/basicFan.vert");
-    const char* VS_string_fan = VSsrc_fan.c_str();
-    std::string FSsrc_fan = textFileRead("resources/basicFan.frag");
-    const char* FS_string_fan = FSsrc_fan.c_str();
-    glShaderSource(VS_h2, 1, &VS_string_fan, NULL);
-    glShaderSource(FS_h2, 1, &FS_string_fan, NULL);
+        std::string VSsrc_fan = textFileRead("resources/basicFan.vert");
+        const char* VS_string_fan = VSsrc_fan.c_str();
+        std::string FSsrc_fan = textFileRead("resources/basicFan.frag");
+        const char* FS_string_fan = FSsrc_fan.c_str();
+        glShaderSource(VS_h2, 1, &VS_string_fan, NULL);
+        glShaderSource(FS_h2, 1, &FS_string_fan, NULL);
 
-    glCompileShader(VS_h2);
-    getShaderInfoLog(VS_h2);
-    glCompileShader(FS_h2);
-    getShaderInfoLog(FS_h2);
-    prog_h2 = glCreateProgram();
-    glAttachShader(prog_h2, VS_h2);
-    glAttachShader(prog_h2, FS_h2);
-    glLinkProgram(prog_h2);
-    getProgramInfoLog(prog_h2);
-    glUseProgram(prog_h2);
-
+        glCompileShader(VS_h2);
+        getShaderInfoLog(VS_h2);
+        glCompileShader(FS_h2);
+        getShaderInfoLog(FS_h2);
+        prog_h2 = glCreateProgram();
+        glAttachShader(prog_h2, VS_h2);
+        glAttachShader(prog_h2, FS_h2);
+        glLinkProgram(prog_h2);
+        getProgramInfoLog(prog_h2);
+        glUseProgram(prog_h2);
+    }
     GLuint VS_h_chess, FS_h_chess, prog_h_chess;
-    VS_h_chess = glCreateShader(GL_VERTEX_SHADER);
-    FS_h_chess = glCreateShader(GL_FRAGMENT_SHADER);
+    //prog_h_chess set up
+    {
+        VS_h_chess = glCreateShader(GL_VERTEX_SHADER);
+        FS_h_chess = glCreateShader(GL_FRAGMENT_SHADER);
 
-    std::string VSsrc_chess = textFileRead("resources/basicChess.vert");
-    const char* VS_string_chess = VSsrc_chess.c_str();
-    std::string FSsrc_chess = textFileRead("resources/basicChess.frag");
-    const char* FS_string_chess = FSsrc_chess.c_str();
-    glShaderSource(VS_h_chess, 1, &VS_string_chess, NULL);
-    glShaderSource(FS_h_chess, 1, &FS_string_chess, NULL);
+        std::string VSsrc_chess = textFileRead("resources/basicChess.vert");
+        const char* VS_string_chess = VSsrc_chess.c_str();
+        std::string FSsrc_chess = textFileRead("resources/basicChess.frag");
+        const char* FS_string_chess = FSsrc_chess.c_str();
+        glShaderSource(VS_h_chess, 1, &VS_string_chess, NULL);
+        glShaderSource(FS_h_chess, 1, &FS_string_chess, NULL);
 
-    glCompileShader(VS_h_chess);
-    getShaderInfoLog(VS_h_chess);
-    glCompileShader(FS_h_chess);
-    getShaderInfoLog(FS_h_chess);
-    prog_h_chess = glCreateProgram();
-    glAttachShader(prog_h_chess, VS_h_chess);
-    glAttachShader(prog_h_chess, FS_h_chess);
-    glLinkProgram(prog_h_chess);
-    getProgramInfoLog(prog_h_chess);
-    glUseProgram(prog_h_chess);
+        glCompileShader(VS_h_chess);
+        getShaderInfoLog(VS_h_chess);
+        glCompileShader(FS_h_chess);
+        getShaderInfoLog(FS_h_chess);
+        prog_h_chess = glCreateProgram();
+        glAttachShader(prog_h_chess, VS_h_chess);
+        glAttachShader(prog_h_chess, FS_h_chess);
+        glLinkProgram(prog_h_chess);
+        getProgramInfoLog(prog_h_chess);
+        glUseProgram(prog_h_chess);
+    }
 
 
     //init VAO1
@@ -404,11 +411,11 @@ int main()
 
     std::vector<GLuint> indices = {0, 1, 2};
     GLuint VAO1; 
-    
+    //VAO 1 setup
     {
         GLuint VBO, EBO;
         //GL names for Array and Buffers Objects
-    // Generate the VAO and VBO
+        // Generate the VAO and VBO
         glGenVertexArrays(1, &VAO1);
         glGenBuffers(1, &VBO);
         glGenBuffers(1, &EBO);
@@ -436,8 +443,6 @@ int main()
     }
 
 
-
-
     //==================KRUH==================
     struct vertex2 {
         glm::vec3 position;
@@ -450,11 +455,10 @@ int main()
     int vertexCount = 100000;
     float angleStep = 2*3.14159265358979323846f/ vertexCount;
     float magnitude = 0.5f;
-
+    //generovani kruhu
     for (int i = 0; i < vertexCount; i++) {
         auto polar = std::polar(magnitude, angleStep * i);
         vertex2 temp_ver = {{polar._Val[0], polar._Val[1], 0.0f}};
-        //std::cout << "Vertices" << polar._Val[0]<< ", "<< polar._Val[1] << '\n';
         vertices2.push_back(temp_ver);
         indices2.push_back(i+1);
     }
@@ -506,6 +510,7 @@ int main()
     float square_size = 0.1f;
     glm::vec3 color_chess;
     bool is_black = true;
+    //generovani sachovnice
     for (float i = min_x; i < max_x; i+=square_size) {
         is_black = !is_black;
         for (float j = min_y; j < max_y; j +=square_size)
@@ -568,7 +573,7 @@ int main()
     glm::mat4 projectionMatrix = glm::perspective(
         glm::radians(60.0f), // The vertical Field of View, in radians: the amount of "zoom". Think "camera lens". Usually between 90° (extra wide) and 30° (quite zoomed in)
         ratio,			     // Aspect Ratio. Depends on the size of your window.
-        0.1f,                // Near clipping plane. Keep as big as possible, or you'll get precision issues.
+        0.01f,                // Near clipping plane. Keep as big as possible, or you'll get precision issues.
         20000.0f             // Far clipping plane. Keep as little as possible.
     );
 
@@ -578,27 +583,60 @@ int main()
     // set visible area
     glViewport(0, 0, width, height);
     
+    double last_frame_time = glfwGetTime();
+    
 
-    int frame_cnt = 0;
+    std::vector<glm::vec3> vertices_teapot;
+    std::vector<glm::vec2> uvs_teapot;
+    std::vector<glm::vec3> normals_teapot;
+    loadOBJ("resources/obj/teapot_tri_vnt.obj", vertices_teapot, uvs_teapot, normals_teapot);
+
     while(!glfwWindowShouldClose(globals.window)) {
+
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-       //trojuhelnik
+        double delta_t = last_frame_time - glfwGetTime();
+        last_frame_time = glfwGetTime();
+        player_position.z += cameraStep_size * camera_movement_z * delta_t;
+        player_position.x += cameraStep_size * camera_movement_x * delta_t;
+        
+        where_to_look.z += cameraStep_size * camera_movement_z * delta_t;
+        where_to_look.x += cameraStep_size * camera_movement_x * delta_t;
+
+        glm::mat4 v_m = glm::lookAt(player_position, //position of camera
+            where_to_look,
+            glm::vec3(0, 1, 0)  //UP direction
+        );
+
+
+        //konvicka
+        {
+            glUseProgram(prog_h);
+            glBindVertexArray(VAO1);
+
+            // Model Matrix
+            glm::mat4 m_m = glm::identity<glm::mat4>();
+            m_m = glm::rotate(m_m, glm::radians(50.0f * (float)glfwGetTime()), glm::vec3(0.0f, 0.1f, 0.0f));
+            glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
+            glUniformMatrix4fv(glGetUniformLocation(prog_h, "uV_m"), 1, GL_FALSE, glm::value_ptr(v_m));
+            glUniformMatrix4fv(glGetUniformLocation(prog_h, "uProj_M"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+            // =====================================================================================================
+            glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+        }
+
+        
+        //trojuhelnik
         {
             glUseProgram(prog_h);
             glBindVertexArray(VAO1);
             
-            
-            glm::mat4 v_m = glm::lookAt(glm::vec3(0.0f, 0.0f, 10.0f), //position of camera
-                glm::vec3(0.0f, 0.0f, 0.0f), //where to look
-                glm::vec3(0, 1, 0)  //UP direction
-            );
-            
             // Model Matrix
             glm::mat4 m_m = glm::identity<glm::mat4>();
             //m_m = glm::translate(m_m, glm::vec3(width / 2, height / 2, 0.0));
-            //m_m = glm::scale(m_m, glm::vec3(5.0f));
+            //m_m = glm::scale(m_m, glm::vec3(500.0f));
             m_m = glm::rotate(m_m, glm::radians(50.0f * (float)glfwGetTime()), glm::vec3(0.3f, 0.1f, 0.5f));
             glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
+            glUniformMatrix4fv(glGetUniformLocation(prog_h, "uV_m"), 1, GL_FALSE, glm::value_ptr(v_m));
+            glUniformMatrix4fv(glGetUniformLocation(prog_h, "uProj_M"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
             // =====================================================================================================
             glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
         }
@@ -617,14 +655,8 @@ int main()
         }*/
 
         {
-            glUseProgram(prog_h);
+            glUseProgram(prog_h_chess);
             glBindVertexArray(VAO_chess);
-
-
-            glm::mat4 v_m = glm::lookAt(glm::vec3(0.0f, 0.0f, 10.0f), //position of camera
-                glm::vec3(0.0f, 0.0f, 0.0f), //where to look
-                glm::vec3(0, 1, 0)  //UP direction
-            );
 
             // Model Matrix
             glm::mat4 m_m = glm::identity<glm::mat4>();
@@ -632,19 +664,30 @@ int main()
             //m_m = glm::scale(m_m, glm::vec3(5.0f));
             m_m = glm::rotate(m_m, glm::radians(100.0f * (float)glfwGetTime()), glm::vec3(0.0f, 0.1f, 0.0f));
             glUniformMatrix4fv(glGetUniformLocation(prog_h_chess, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
+            glUniformMatrix4fv(glGetUniformLocation(prog_h_chess, "uV_m"), 1, GL_FALSE, glm::value_ptr(v_m));
+            glUniformMatrix4fv(glGetUniformLocation(prog_h_chess, "uProj_M"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
             // =====================================================================================================
             glDrawElements(GL_TRIANGLES, indices_chess.size(), GL_UNSIGNED_INT, 0);
         }
 
         glfwSwapBuffers(globals.window);
+        
         glfwPollEvents();
-
     }
-    //cv::Mat frame = cv::imread("resources/HSV-MAP.png");
+    std::cout << "Program ended." << '\n';
+}
 
-    //globals.capture = cv::VideoCapture(cv::CAP_DSHOW);
-    /*globals.capture = cv::VideoCapture("resources/video.mkv");
-    if (!globals.capture.isOpened()) //pokud neni kamera otevřená 
+
+//======================================================================================================================
+//======================================================================================================================
+//============================================2D-Raster-Processing======================================================
+//======================================================================================================================
+//======================================================================================================================
+void run_2D_raster_processing() {
+    cv::Mat frame = cv::imread("resources/HSV-MAP.png");
+    globals.capture = cv::VideoCapture(cv::CAP_DSHOW);
+    globals.capture = cv::VideoCapture("resources/video.mkv");
+    if (!globals.capture.isOpened()) //pokud neni kamera otevřená
     {
         std::cerr << "no camera" << std::endl;
         exit(EXIT_FAILURE);
@@ -654,7 +697,7 @@ int main()
     image_proccessing_alive = true;
     std::thread t1(image_processing, "something");
 
-    cv::Mat frame;
+    //cv::Mat frame;
     cv::Point2f center_relative;
     std::unique_ptr<image_data> img_data_local_prt;
     while (true) {
@@ -679,9 +722,10 @@ int main()
         if (!image_proccessing_alive) break;
     }
     t1.join();
-    std::cout << "Program ended, threads were joined." << '\n';*/
-    std::cout << "Program ended." << '\n';
+    std::cout << "Program ended, threads were joined." << '\n';
 }
+
+
 
 void image_processing(std::string string) {
 
@@ -803,4 +847,5 @@ void draw_cross_relative(cv::Mat& img, cv::Point2f center_relative, int size)
     cv::line(img, p1, p2, CV_RGB(0, 0, 255), 2);
     cv::line(img, p3, p4, CV_RGB(0, 0, 255), 2);
 }
+
 
