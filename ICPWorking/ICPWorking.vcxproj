@@ -144,8 +144,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="ICPWorking.cpp" />
+    <ClCompile Include="OBJloader.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="OBJloader.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>

@@ -16,7 +16,8 @@
 #include <memory> //for smart pointers (unique_ptr)
 #include <fstream>
 
-#include "OBJloader.cpp"
+#include "OBJloader.h"
+//#include "OBJloader.cpp"
 
 
 void run_2D_raster_processing();
@@ -215,11 +216,11 @@ static void init_glfw(void)
     // Shader based, modern OpenGL (3.3 and higher)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
-    //glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // only new functions
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE); // only old functions (for old tutorials etc.)
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // only new functions <= this is the core profile
+    //glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE); // only old functions (for old tutorials etc.)
 
     glfwWindowHint(GLFW_SAMPLES, 4); // 4x antialiasing
-    globals.window = glfwCreateWindow(800, 800, "OpenGL context", NULL, NULL);
+    globals.window = glfwCreateWindow(800, 800, "Final project by Broz&Jacik", NULL, NULL);
     if (!globals.window)
     {
         std::cerr << "GLFW window creation error." << std::endl;
@@ -322,7 +323,7 @@ int main()
     glEnable(GL_CULL_FACE);
     glfwSwapInterval(1);//zapnutí Vsync
 
-    GLuint VS_h, FS_h, prog_h;
+    GLuint VS_h, FS_h, prog_h; //(FS = fragment shader, VS = vertex shader)
     //prog_h set up
     {
         VS_h = glCreateShader(GL_VERTEX_SHADER);
@@ -586,10 +587,54 @@ int main()
     double last_frame_time = glfwGetTime();
     
 
-    std::vector<glm::vec3> vertices_teapot;
-    std::vector<glm::vec2> uvs_teapot;
-    std::vector<glm::vec3> normals_teapot;
-    loadOBJ("resources/obj/teapot_tri_vnt.obj", vertices_teapot, uvs_teapot, normals_teapot);
+    std::vector<glm::vec3> vertices_car_subaru;
+    std::vector<glm::vec2> uvs_car_subaru;
+    std::vector<glm::vec3> normals_car_subaru;
+    loadOBJ("resources/obj/_Subaru-Loyale.obj", vertices_car_subaru, uvs_car_subaru, normals_car_subaru);
+    
+    //Subaru car shader set up (FS = fragment shader, VS = vertex shader, SP = shader program)
+    GLuint subaruCarSP, subaruCarVAO; //VAO = Vertex Array Object (holds all VBO)
+    {
+        //vertex shader load
+        GLuint subaruCarVS = glCreateShader(GL_VERTEX_SHADER);
+        std::string VSsrc = textFileRead("resources/basic.vert");
+        const char* VS_string = VSsrc.c_str();
+        glShaderSource(VS_h, 1, &VS_string, NULL);
+        glCompileShader(subaruCarVS);
+        //fragment shader load
+        GLuint subaruCarFS = glCreateShader(GL_FRAGMENT_SHADER);
+        std::string FSsrc = textFileRead("resources/basic.frag");
+        const char* FS_string = FSsrc.c_str();
+        glShaderSource(FS_h, 1, &FS_string, NULL);
+        glCompileShader(subaruCarFS);
+        //creating the shade program 
+        subaruCarSP = glCreateProgram();
+        glAttachShader(subaruCarSP, subaruCarVS);
+        glAttachShader(subaruCarSP, subaruCarFS);
+        glLinkProgram(subaruCarSP);
+        //shaders are in the program so we can delete them
+        glDeleteShader(subaruCarVS);
+        glDeleteShader(subaruCarFS);
+
+        //setting up vertex data buffers for the car (so it can be loaded quickly to GPU)
+        GLuint VBO, EBO; // VBO = Vertex Buffer Object (array of references), EBO = buffer for indices
+        glGenVertexArrays(1, &subaruCarVAO); //IMPORTANT: this needs to be called before glGenBuffers(1, &VBO);
+        glGenBuffers(1, &VBO);
+        glGenBuffers(1, &EBO);
+        glBindVertexArray(subaruCarVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vertex), vertices_car_subaru.data(), GL_STATIC_DRAW); //GL_STATIC_DRAW is a parameter to increase performance. Change if needed 
+        
+        
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(indices), vertices_car_subaru.data(), GL_STATIC_DRAW);
+        glVertexAttribPointer(0,3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(0 + offsetof(vertex, position))); //a way to comunicate with vertex shader
+        glEnableVertexAttribArray(0);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        
+        glBindVertexArray(0);
+        
+    }
 
     while(!glfwWindowShouldClose(globals.window)) {
 
@@ -608,26 +653,25 @@ int main()
         );
 
         //subaru car
-        {
+        /* {
            //do model rendering here (but not loading from file)
-        }
-
-
-        //konvicka
-        {
-            glUseProgram(prog_h);
-            glBindVertexArray(VAO1);
+            glUseProgram(subaruCarSP);
+            glBindVertexArray(subaruCarVAO);
 
             // Model Matrix
             glm::mat4 m_m = glm::identity<glm::mat4>();
-            m_m = glm::rotate(m_m, glm::radians(50.0f * (float)glfwGetTime()), glm::vec3(0.0f, 0.1f, 0.0f));
-            glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
-            glUniformMatrix4fv(glGetUniformLocation(prog_h, "uV_m"), 1, GL_FALSE, glm::value_ptr(v_m));
-            glUniformMatrix4fv(glGetUniformLocation(prog_h, "uProj_M"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
-            // =====================================================================================================
-            glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
-        }
+            //m_m = glm::translate(m_m, glm::vec3(width / 2, height / 2, 0.0));
+            //m_m = glm::scale(m_m, glm::vec3(500.0f));
+            m_m = glm::rotate(m_m, glm::radians(50.0f * (float)glfwGetTime()), glm::vec3(0.3f, 0.1f, 0.5f));
+            glUniformMatrix4fv(glGetUniformLocation(subaruCarSP, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
+            glUniformMatrix4fv(glGetUniformLocation(subaruCarSP, "uV_m"), 1, GL_FALSE, glm::value_ptr(v_m));
+            glUniformMatrix4fv(glGetUniformLocation(subaruCarSP, "uProj_M"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
 
+            glDrawArrays(GL_TRIANGLES,0,sizeof(subaruCarSP));
+        }*/
+
+
+        
         
         //trojuhelnik
         {
@@ -645,7 +689,7 @@ int main()
             // =====================================================================================================
             glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
         }
-        /*
+        
         //kruh
         {
             glUseProgram(prog_h2); // nutne upravit, uz nemame barvu => nový shared
@@ -657,7 +701,7 @@ int main()
 
             glBindVertexArray(VAO2);
             glDrawElements(GL_TRIANGLE_FAN, indices2.size(), GL_UNSIGNED_INT, 0);
-        }*/
+        }
 
         {
             glUseProgram(prog_h_chess);
@@ -676,11 +720,13 @@ int main()
         }
 
         glfwSwapBuffers(globals.window);
-        
         glfwPollEvents();
     }
     std::cout << "Program ended." << '\n';
 }
+//===================================================== END OF MAIN =====================================================
+
+
 
 
 //======================================================================================================================
