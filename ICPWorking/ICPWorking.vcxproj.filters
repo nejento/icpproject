@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Soubory zdrojů\Shaders">
+      <UniqueIdentifier>{09b2e32c-b121-4efe-9e90-a09a5ce94905}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ICPWorking.cpp">
@@ -31,23 +34,23 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <None Include="resources\basicChess.vert">
+      <Filter>Soubory zdrojů\Shaders</Filter>
+    </None>
     <None Include="resources\basic.frag">
-      <Filter>Soubory zdrojů</Filter>
+      <Filter>Soubory zdrojů\Shaders</Filter>
     </None>
     <None Include="resources\basic.vert">
-      <Filter>Soubory zdrojů</Filter>
+      <Filter>Soubory zdrojů\Shaders</Filter>
     </None>
     <None Include="resources\basicFan.frag">
-      <Filter>Soubory zdrojů</Filter>
+      <Filter>Soubory zdrojů\Shaders</Filter>
     </None>
     <None Include="resources\basicFan.vert">
-      <Filter>Soubory zdrojů</Filter>
+      <Filter>Soubory zdrojů\Shaders</Filter>
     </None>
     <None Include="resources\basicChess.frag">
-      <Filter>Soubory zdrojů</Filter>
-    </None>
-    <None Include="resources\basicChess.vert">
-      <Filter>Soubory zdrojů</Filter>
+      <Filter>Soubory zdrojů\Shaders</Filter>
     </None>
   </ItemGroup>
 </Project>

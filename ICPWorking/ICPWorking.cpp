@@ -17,7 +17,8 @@
 #include <fstream>
 
 #include "OBJloader.h"
-//#include "OBJloader.cpp"
+
+
 
 
 void run_2D_raster_processing();
@@ -27,6 +28,15 @@ void draw_cross(cv::Mat& img, int x, int y, int size);
 void image_processing(std::string string);
 cv::Point2f find_center_Y(cv::Mat& frame);
 cv::Point2f find_center_HSV(cv::Mat& frame);
+
+
+struct vertex {
+    glm::vec3 position; // Vertex pos
+    glm::vec3 color; // Color
+    glm::vec2 texCoor; // Texture coordinates
+    glm::vec3 normal; // Normal used for light reflectivity
+};
+GLuint PrepareVAO(std::vector<vertex> vertices, std::vector<GLuint> indices);
 
 typedef struct image_data {
     cv::Point2f center;
@@ -304,6 +314,10 @@ std::string getProgramInfoLog(const GLuint obj) {
     return s;
 }
 
+void GenerateChessPattern(std::vector<vertex>& vertices_chess, cvflann::lsh::Bucket& indices_chess);
+
+GLuint PrepareShaderProgram(std::string& vert_shader_path, std::string& frag_shader_path);
+
 //===================================================== MAIN =====================================================
 int main()
 {
@@ -323,87 +337,21 @@ int main()
     glEnable(GL_CULL_FACE);
     glfwSwapInterval(1);//zapnutí Vsync
 
-    GLuint VS_h, FS_h, prog_h; //(FS = fragment shader, VS = vertex shader)
+    std::string vert_shader_path = "resources/basic.vert";
+    std::string frag_shader_path = "resources/basic.frag";
     //prog_h set up
-    {
-        VS_h = glCreateShader(GL_VERTEX_SHADER);
-        FS_h = glCreateShader(GL_FRAGMENT_SHADER);
+    GLuint prog_h = PrepareShaderProgram(vert_shader_path, frag_shader_path);
 
-        std::string VSsrc = textFileRead("resources/basic.vert");
-        const char* VS_string = VSsrc.c_str();
-        std::string FSsrc = textFileRead("resources/basic.frag");
-        const char* FS_string = FSsrc.c_str();
-        glShaderSource(VS_h, 1, &VS_string, NULL);
-        glShaderSource(FS_h, 1, &FS_string, NULL);
+    std::string vert_shader_path_fan = "resources/basicFan.vert";
+    std::string frag_shader_path_fan = "resources/basicFan.frag";
+    GLuint prog_h2 = PrepareShaderProgram(vert_shader_path_fan, frag_shader_path_fan);
 
-        glCompileShader(VS_h);
-        getShaderInfoLog(VS_h);
-        glCompileShader(FS_h);
-        getShaderInfoLog(FS_h);
-        prog_h = glCreateProgram();
-        glAttachShader(prog_h, VS_h);
-        glAttachShader(prog_h, FS_h);
-        glLinkProgram(prog_h);
-        getProgramInfoLog(prog_h);
-        glUseProgram(prog_h);
-    }
-
-    GLuint VS_h2, FS_h2, prog_h2;
-    //prog_h2 set up
-    {
-        VS_h2 = glCreateShader(GL_VERTEX_SHADER);
-        FS_h2 = glCreateShader(GL_FRAGMENT_SHADER);
-
-        std::string VSsrc_fan = textFileRead("resources/basicFan.vert");
-        const char* VS_string_fan = VSsrc_fan.c_str();
-        std::string FSsrc_fan = textFileRead("resources/basicFan.frag");
-        const char* FS_string_fan = FSsrc_fan.c_str();
-        glShaderSource(VS_h2, 1, &VS_string_fan, NULL);
-        glShaderSource(FS_h2, 1, &FS_string_fan, NULL);
-
-        glCompileShader(VS_h2);
-        getShaderInfoLog(VS_h2);
-        glCompileShader(FS_h2);
-        getShaderInfoLog(FS_h2);
-        prog_h2 = glCreateProgram();
-        glAttachShader(prog_h2, VS_h2);
-        glAttachShader(prog_h2, FS_h2);
-        glLinkProgram(prog_h2);
-        getProgramInfoLog(prog_h2);
-        glUseProgram(prog_h2);
-    }
-    GLuint VS_h_chess, FS_h_chess, prog_h_chess;
-    //prog_h_chess set up
-    {
-        VS_h_chess = glCreateShader(GL_VERTEX_SHADER);
-        FS_h_chess = glCreateShader(GL_FRAGMENT_SHADER);
-
-        std::string VSsrc_chess = textFileRead("resources/basicChess.vert");
-        const char* VS_string_chess = VSsrc_chess.c_str();
-        std::string FSsrc_chess = textFileRead("resources/basicChess.frag");
-        const char* FS_string_chess = FSsrc_chess.c_str();
-        glShaderSource(VS_h_chess, 1, &VS_string_chess, NULL);
-        glShaderSource(FS_h_chess, 1, &FS_string_chess, NULL);
-
-        glCompileShader(VS_h_chess);
-        getShaderInfoLog(VS_h_chess);
-        glCompileShader(FS_h_chess);
-        getShaderInfoLog(FS_h_chess);
-        prog_h_chess = glCreateProgram();
-        glAttachShader(prog_h_chess, VS_h_chess);
-        glAttachShader(prog_h_chess, FS_h_chess);
-        glLinkProgram(prog_h_chess);
-        getProgramInfoLog(prog_h_chess);
-        glUseProgram(prog_h_chess);
-    }
+    std::string vert_shader_path_chess = "resources/basicChess.vert";
+    std::string frag_shader_path_chess = "resources/basicChess.frag";
+    GLuint prog_h_chess = PrepareShaderProgram(vert_shader_path_chess, frag_shader_path_chess);
 
 
     //init VAO1
-    struct vertex {
-        glm::vec3 position;
-        glm::vec3 color;
-
-    };
     std::vector<vertex> vertices = {
         {{-0.5f, -0.5f, 0.0f},{1.0f,0.0f,0.0f}}, //pozice + barva vrcholu
         {{0.5f, -0.5f, 0.0f},{0.0f,1.0f,0.0f}},
@@ -411,47 +359,12 @@ int main()
     };
 
     std::vector<GLuint> indices = {0, 1, 2};
-    GLuint VAO1; 
-    //VAO 1 setup
-    {
-        GLuint VBO, EBO;
-        //GL names for Array and Buffers Objects
-        // Generate the VAO and VBO
-        glGenVertexArrays(1, &VAO1);
-        glGenBuffers(1, &VBO);
-        glGenBuffers(1, &EBO);
-        // Bind VAO (set as the current)
-        glBindVertexArray(VAO1);
-        // Bind the VBO, set type as GL_ARRAY_BUFFER
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        // Fill-in data into the VBO
-        glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(vertex), vertices.data(), GL_STATIC_DRAW);
-        // Bind EBO, set type GL_ELEMENT_ARRAY_BUFFER
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-        // Fill-in data into the EBO
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
-        // Set Vertex Attribute to explain OpenGL how to interpret the VBO
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(0 + offsetof(vertex, position)));
-        // Enable the Vertex Attribute 0 = position
-        glEnableVertexAttribArray(0);
-        // Set end enable Vertex Attribute 1 = Texture Coordinates
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(0 + offsetof(vertex, color)));
-        glEnableVertexAttribArray(1);
-        // Bind VBO and VAO to 0 to prevent unintended modification
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glBindVertexArray(0);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-    }
-
-
+    GLuint VAO1 = PrepareVAO(vertices, indices);
+    
     //==================KRUH==================
-    struct vertex2 {
-        glm::vec3 position;
-
-    };
     //vygenerujte data pro kolecko uprostred obrazovky (triangle fan) z 100 000 vertexu
-    std::vector<vertex2> vertices2 = {};
-    std::vector<GLuint> indices2 = {};
+    std::vector<vertex> vertices_kruh = {};
+    std::vector<GLuint> indices_kruh = {};
     
     int vertexCount = 100000;
     float angleStep = 2*3.14159265358979323846f/ vertexCount;
@@ -459,112 +372,23 @@ int main()
     //generovani kruhu
     for (int i = 0; i < vertexCount; i++) {
         auto polar = std::polar(magnitude, angleStep * i);
-        vertex2 temp_ver = {{polar._Val[0], polar._Val[1], 0.0f}};
-        vertices2.push_back(temp_ver);
-        indices2.push_back(i+1);
+        vertex temp_ver = {{polar._Val[0], polar._Val[1], 0.0f}};
+        vertices_kruh.push_back(temp_ver);
+        indices_kruh.push_back(i+1);
     }
-    vertices2.push_back({ {0.0f, 0.0f, 0.0f} });
-    indices2.push_back(0);
+    vertices_kruh.push_back({ {0.0f, 0.0f, 0.0f} });
+    indices_kruh.push_back(0);
     
     
-    GLuint VAO2;
-    {
-        GLuint VBO, EBO;
-        //GL names for Array and Buffers Objects
-    // Generate the VAO and VBO
-        glGenVertexArrays(1, &VAO2);
-        glGenBuffers(1, &VBO);
-        glGenBuffers(1, &EBO);
-        // Bind VAO (set as the current)
-        glBindVertexArray(VAO2);
-        // Bind the VBO, set type as GL_ARRAY_BUFFER
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        // Fill-in data into the VBO
-        glBufferData(GL_ARRAY_BUFFER, vertices2.size() * sizeof(vertex2), vertices2.data(), GL_STATIC_DRAW);
-        // Bind EBO, set type GL_ELEMENT_ARRAY_BUFFER
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-        // Fill-in data into the EBO
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices2.size() * sizeof(GLuint), indices2.data(), GL_STATIC_DRAW);
-        // Set Vertex Attribute to explain OpenGL how to interpret the VBO
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex2), (void*)(0 + offsetof(vertex2, position)));
-        // Enable the Vertex Attribute 0 = position
-        glEnableVertexAttribArray(0);
-        // Bind VBO and VAO to 0 to prevent unintended modification
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glBindVertexArray(0);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-    }
+    GLuint VAO_kruh = PrepareVAO(vertices_kruh, indices_kruh);
 
-    
     //==================SACHOVNICE==================
 
     //vygenerujte data pro kolecko uprostred obrazovky (triangle fan) z 100 000 vertexu
     std::vector<vertex> vertices_chess = {};
     std::vector<GLuint> indices_chess = {};
-
-    int min_x = -1;
-    int max_x = 1;
-    int min_y = -1;
-    int max_y = 1;
-    int ver_count = 0;
-
-    float square_size = 0.1f;
-    glm::vec3 color_chess;
-    bool is_black = true;
-    //generovani sachovnice
-    for (float i = min_x; i < max_x; i+=square_size) {
-        is_black = !is_black;
-        for (float j = min_y; j < max_y; j +=square_size)
-        {
-            if (is_black) {
-                color_chess = { 1.0f, 0.0f, 0.0f };
-            }
-            else color_chess = { 1.0f, 1.0f, 1.0f };
-            is_black = !is_black;
-            
-            vertices_chess.push_back({{i            , j, 0}, color_chess });
-            vertices_chess.push_back({{i+square_size, j, 0}, color_chess });
-            vertices_chess.push_back({{i, j+square_size, 0}, color_chess });
-            
-            vertices_chess.push_back({{i+square_size,j+ square_size, 0}, color_chess });
-            vertices_chess.push_back({{i, j+square_size, 0}, color_chess });
-            vertices_chess.push_back({{i+square_size, j, 0}, color_chess });
-            
-            for (int ver = 0; ver < 6; ver++) {
-                indices_chess.push_back(ver_count++);
-            }
-        }   
-    }
-    GLuint VAO_chess;
-    {
-        GLuint VBO, EBO;
-        //GL names for Array and Buffers Objects
-        // Generate the VAO and VBO
-        glGenVertexArrays(1, &VAO_chess);
-        glGenBuffers(1, &VBO);
-        glGenBuffers(1, &EBO);
-        // Bind VAO (set as the current)
-        glBindVertexArray(VAO_chess);
-        // Bind the VBO, set type as GL_ARRAY_BUFFER
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        // Fill-in data into the VBO
-        glBufferData(GL_ARRAY_BUFFER, vertices_chess.size() * sizeof(vertex), vertices_chess.data(), GL_STATIC_DRAW);
-        // Bind EBO, set type GL_ELEMENT_ARRAY_BUFFER
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-        // Fill-in data into the EBO
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_chess.size() * sizeof(GLuint), indices_chess.data(), GL_STATIC_DRAW);
-        // Set Vertex Attribute to explain OpenGL how to interpret the VBO
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(0 + offsetof(vertex, position)));
-        // Enable the Vertex Attribute 0 = position
-        glEnableVertexAttribArray(0);
-        // Set end enable Vertex Attribute 1 = Texture Coordinates
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(0 + offsetof(vertex, color)));
-        glEnableVertexAttribArray(1);
-        // Bind VBO and VAO to 0 to prevent unintended modification
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glBindVertexArray(0);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-    }
+    GenerateChessPattern(vertices_chess, indices_chess);
+    GLuint VAO_chess = PrepareVAO(vertices_chess, indices_chess);
 
     int width, height;
     glfwGetWindowSize(glfwGetCurrentContext(), &width, &height);
@@ -591,50 +415,7 @@ int main()
     std::vector<glm::vec2> uvs_car_subaru;
     std::vector<glm::vec3> normals_car_subaru;
     loadOBJ("resources/obj/_Subaru-Loyale.obj", vertices_car_subaru, uvs_car_subaru, normals_car_subaru);
-    
-    //Subaru car shader set up (FS = fragment shader, VS = vertex shader, SP = shader program)
-    GLuint subaruCarSP, subaruCarVAO; //VAO = Vertex Array Object (holds all VBO)
-    {
-        //vertex shader load
-        GLuint subaruCarVS = glCreateShader(GL_VERTEX_SHADER);
-        std::string VSsrc = textFileRead("resources/basic.vert");
-        const char* VS_string = VSsrc.c_str();
-        glShaderSource(VS_h, 1, &VS_string, NULL);
-        glCompileShader(subaruCarVS);
-        //fragment shader load
-        GLuint subaruCarFS = glCreateShader(GL_FRAGMENT_SHADER);
-        std::string FSsrc = textFileRead("resources/basic.frag");
-        const char* FS_string = FSsrc.c_str();
-        glShaderSource(FS_h, 1, &FS_string, NULL);
-        glCompileShader(subaruCarFS);
-        //creating the shade program 
-        subaruCarSP = glCreateProgram();
-        glAttachShader(subaruCarSP, subaruCarVS);
-        glAttachShader(subaruCarSP, subaruCarFS);
-        glLinkProgram(subaruCarSP);
-        //shaders are in the program so we can delete them
-        glDeleteShader(subaruCarVS);
-        glDeleteShader(subaruCarFS);
-
-        //setting up vertex data buffers for the car (so it can be loaded quickly to GPU)
-        GLuint VBO, EBO; // VBO = Vertex Buffer Object (array of references), EBO = buffer for indices
-        glGenVertexArrays(1, &subaruCarVAO); //IMPORTANT: this needs to be called before glGenBuffers(1, &VBO);
-        glGenBuffers(1, &VBO);
-        glGenBuffers(1, &EBO);
-        glBindVertexArray(subaruCarVAO);
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(vertex), vertices_car_subaru.data(), GL_STATIC_DRAW); //GL_STATIC_DRAW is a parameter to increase performance. Change if needed 
         
-        
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(indices), vertices_car_subaru.data(), GL_STATIC_DRAW);
-        glVertexAttribPointer(0,3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(0 + offsetof(vertex, position))); //a way to comunicate with vertex shader
-        glEnableVertexAttribArray(0);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        
-        glBindVertexArray(0);
-        
-    }
 
     while(!glfwWindowShouldClose(globals.window)) {
 
@@ -650,29 +431,7 @@ int main()
         glm::mat4 v_m = glm::lookAt(player_position, //position of camera
             where_to_look,
             glm::vec3(0, 1, 0)  //UP direction
-        );
-
-        //subaru car
-        /* {
-           //do model rendering here (but not loading from file)
-            glUseProgram(subaruCarSP);
-            glBindVertexArray(subaruCarVAO);
-
-            // Model Matrix
-            glm::mat4 m_m = glm::identity<glm::mat4>();
-            //m_m = glm::translate(m_m, glm::vec3(width / 2, height / 2, 0.0));
-            //m_m = glm::scale(m_m, glm::vec3(500.0f));
-            m_m = glm::rotate(m_m, glm::radians(50.0f * (float)glfwGetTime()), glm::vec3(0.3f, 0.1f, 0.5f));
-            glUniformMatrix4fv(glGetUniformLocation(subaruCarSP, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
-            glUniformMatrix4fv(glGetUniformLocation(subaruCarSP, "uV_m"), 1, GL_FALSE, glm::value_ptr(v_m));
-            glUniformMatrix4fv(glGetUniformLocation(subaruCarSP, "uProj_M"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
-
-            glDrawArrays(GL_TRIANGLES,0,sizeof(subaruCarSP));
-        }*/
-
-
-        
-        
+        );      
         //trojuhelnik
         {
             glUseProgram(prog_h);
@@ -699,8 +458,8 @@ int main()
 
             
 
-            glBindVertexArray(VAO2);
-            glDrawElements(GL_TRIANGLE_FAN, indices2.size(), GL_UNSIGNED_INT, 0);
+            glBindVertexArray(VAO_kruh);
+            glDrawElements(GL_TRIANGLE_FAN, indices_kruh.size(), GL_UNSIGNED_INT, 0);
         }
 
         {
@@ -724,7 +483,104 @@ int main()
     }
     std::cout << "Program ended." << '\n';
 }
+
+
+
 //===================================================== END OF MAIN =====================================================
+GLuint PrepareShaderProgram(std::string& vert_shader_path, std::string& frag_shader_path)
+{
+    //(FS = fragment shader, VS = vertex shader)
+    GLuint prog_h;
+    GLuint VS_h = glCreateShader(GL_VERTEX_SHADER);
+    GLuint FS_h = glCreateShader(GL_FRAGMENT_SHADER);
+
+    std::string VSsrc = textFileRead(vert_shader_path);
+    const char* VS_string = VSsrc.c_str();
+    std::string FSsrc = textFileRead(frag_shader_path);
+    const char* FS_string = FSsrc.c_str();
+    glShaderSource(VS_h, 1, &VS_string, NULL);
+    glShaderSource(FS_h, 1, &FS_string, NULL);
+    glCompileShader(VS_h);
+    getShaderInfoLog(VS_h);
+    glCompileShader(FS_h);
+    getShaderInfoLog(FS_h);
+    prog_h = glCreateProgram();
+    glAttachShader(prog_h, VS_h);
+    glAttachShader(prog_h, FS_h);
+    glLinkProgram(prog_h);
+    getProgramInfoLog(prog_h);
+    glUseProgram(prog_h);
+    return prog_h;
+}
+
+GLuint PrepareVAO(std::vector<vertex> vertices, std::vector<GLuint> indices) {
+    GLuint resultVAO = glCreateShader(GL_VERTEX_SHADER); //fust something to stop compile errors
+    GLuint VBO, EBO;
+    //GL names for Array and Buffers Objects
+    // Generate the VAO and VBO
+    glGenVertexArrays(1, &resultVAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+    // Bind VAO (set as the current)
+    glBindVertexArray(resultVAO);
+    // Bind the VBO, set type as GL_ARRAY_BUFFER
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    // Fill-in data into the VBO
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(vertex), vertices.data(), GL_STATIC_DRAW);
+    // Bind EBO, set type GL_ELEMENT_ARRAY_BUFFER
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    // Fill-in data into the EBO
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
+    // Set Vertex Attribute to explain OpenGL how to interpret the VBO
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(0 + offsetof(vertex, position)));
+    // Enable the Vertex Attribute 0 = position
+    glEnableVertexAttribArray(0);
+    // Set end enable Vertex Attribute 1 = Texture Coordinates
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(0 + offsetof(vertex, color)));
+    glEnableVertexAttribArray(1);
+    // Bind VBO and VAO to 0 to prevent unintended modification
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+    return resultVAO;
+}
+void GenerateChessPattern(std::vector<vertex>& vertices_chess, cvflann::lsh::Bucket& indices_chess)
+{
+    int min_x = -1;
+    int max_x = 1;
+    int min_y = -1;
+    int max_y = 1;
+    int ver_count = 0;
+
+    float square_size = 0.1f;
+    glm::vec3 color_chess;
+    bool is_black = true;
+    //generovani sachovnice
+    for (float i = min_x; i < max_x; i += square_size) {
+        is_black = !is_black;
+        for (float j = min_y; j < max_y; j += square_size)
+        {
+            if (is_black) {
+                color_chess = { 1.0f, 0.0f, 0.0f };
+            }
+            else color_chess = { 1.0f, 1.0f, 1.0f };
+            is_black = !is_black;
+
+            vertices_chess.push_back({ { i            , j, 0 }, color_chess });
+            vertices_chess.push_back({ { i + square_size, j, 0 }, color_chess });
+            vertices_chess.push_back({ { i, j + square_size, 0 }, color_chess });
+
+            vertices_chess.push_back({ { i + square_size,j + square_size, 0 }, color_chess });
+            vertices_chess.push_back({ { i, j + square_size, 0 }, color_chess });
+            vertices_chess.push_back({ { i + square_size, j, 0 }, color_chess });
+
+            for (int ver = 0; ver < 6; ver++) {
+                indices_chess.push_back(ver_count++);
+            }
+        }
+    }
+}
 
 
 
@@ -898,5 +754,4 @@ void draw_cross_relative(cv::Mat& img, cv::Point2f center_relative, int size)
     cv::line(img, p1, p2, CV_RGB(0, 0, 255), 2);
     cv::line(img, p3, p4, CV_RGB(0, 0, 255), 2);
 }
-
 
