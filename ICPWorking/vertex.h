@@ -4,10 +4,11 @@
 #include <glm/glm.hpp>
 struct vertex
 {
-    glm::vec3 position; // Vertex pos
-    glm::vec3 color; // Color
-    glm::vec2 texCoor; // Texture coordinates
-    glm::vec3 normal; // Normal used for light reflectivity
+    glm::vec3 position; 
+    glm::vec3 color;
+    glm::vec3 normal;   // Normals are used for light reflectivity
+    glm::vec2 texCoor;  // Texture coordinates
+    
 };
 
 #endif

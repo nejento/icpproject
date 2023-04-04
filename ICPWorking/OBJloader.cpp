@@ -3,6 +3,7 @@
 #include <glm/glm.hpp>
 
 #include "OBJloader.h"
+#include "vertex.h"
 
 #define array_cnt(a) ((unsigned int)(sizeof(a)/sizeof(a[0])))
 
@@ -93,15 +94,8 @@ bool loadOBJ(const char * path, std::vector < glm::vec3 > & out_vertices, std::v
 //================================================================================================================================
 //================================================================================================================================
 //================================================================================================================================
-struct vertex {
-	glm::vec3 position; // Vertex pos
-	glm::vec3 color; // Color
-	glm::vec2 texCoor; // Texture coordinates
-	glm::vec3 normal; // Normal used for light reflectivity
-};
 
-
-bool loadOBJ(const char* path, std::vector <vertex>& out_vertices, std::vector <GLuint>& indices, glm::vec3 color, glm::vec3 scale, glm::vec3 coords) {
+bool loadOBJ(const char* path, std::vector <vertex>& out_vertices, std::vector <GLuint>& indices) {
 	std::vector< unsigned int > vertexIndices, uvIndices, normalIndices;
 	std::vector< glm::vec3 > temp_vertices;
 	std::vector< glm::vec2 > temp_uvs;
@@ -159,13 +153,19 @@ bool loadOBJ(const char* path, std::vector <vertex>& out_vertices, std::vector <
 		}
 	}
 
-	// unroll from indirect to direct vertex specification
-	// sometimes not necessary, definitely not optimal
+	
+	//these are jsut testing for potential features. Might pass them as argument later.
+	glm::vec3 color = { 1, 1, 1 };  //color of all tringales in the model
+	glm::vec3 scale = { 1, 1, 1 };	//scale of the whole model
+	glm::vec3 coords = { 0, -0.5, 0 };//position of the whole model in the scene
 
+
+	//TODO: load save normals to the vertex
+	//TODO: load save texture coord to the vertex
 	for (unsigned int u = 0; u < vertexIndices.size(); u++) {
 		unsigned int vertexIndex = vertexIndices[u];
 		glm::vec3 vertex = coords + (temp_vertices[vertexIndex - 1] * scale);
-		out_vertices.push_back({ vertex, color });
+		out_vertices.push_back({ vertex, color});
 	}
 
 	fclose(file);

@@ -51,10 +51,9 @@ s_globals globals;
 glm::vec4 color = { 1.0f, 1.0f, 1.0f, 0.0f };
 std::mutex img_access_mutex;
 bool image_proccessing_alive;
-glm::vec3 player_position(0.0f, 0.0f, 0.2f);
-glm::vec3 where_to_look(0.0f, 0.0f, 0.0f);
-float cameraStep_size = 0.9;
 
+
+float cameraStep_size = 0.9;
 int camera_movement_x = 0;
 int camera_movement_z = 0;
 
@@ -221,7 +220,8 @@ static void init_glfw(void)
     //glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE); // only old functions (for old tutorials etc.)
 
     glfwWindowHint(GLFW_SAMPLES, 4); // 4x antialiasing
-    globals.window = glfwCreateWindow(800, 800, "Final project by Broz&Jacik", NULL, NULL);
+    // original resolution 800x800
+    globals.window = glfwCreateWindow(1000,1000, "Final project by Broz&Jacik", NULL, NULL);
     if (!globals.window)
     {
         std::cerr << "GLFW window creation error." << std::endl;
@@ -330,7 +330,6 @@ int main()
 
     std::string vert_shader_path = "resources/basic.vert";
     std::string frag_shader_path = "resources/basic.frag";
-    //prog_h set up
     GLuint prog_h = PrepareShaderProgram(vert_shader_path, frag_shader_path);
 
     std::string vert_shader_path_fan = "resources/basicFan.vert";
@@ -342,7 +341,6 @@ int main()
     GLuint prog_h_chess = PrepareShaderProgram(vert_shader_path_chess, frag_shader_path_chess);
 
 
-    //init VAO1
     std::vector<vertex> vertices = {
         {{-0.5f, -0.5f, 0.0f},{1.0f,0.0f,0.0f}}, //pozice + barva vrcholu
         {{0.5f, -0.5f, 0.0f},{0.0f,1.0f,0.0f}},
@@ -402,12 +400,16 @@ int main()
     double last_frame_time = glfwGetTime();
     
 
-    std::vector<glm::vec3> vertices_car_subaru;
-    std::vector<glm::vec2> uvs_car_subaru;
-    std::vector<glm::vec3> normals_car_subaru;
-    loadOBJ("resources/obj/_Subaru-Loyale.obj", vertices_car_subaru, uvs_car_subaru, normals_car_subaru);
-        
+    std::vector<vertex> vertices_subaru = {};
+    std::vector<GLuint> indices_subaru = {};
+    loadOBJ("resources/obj/_Subaru-Loyale.obj", vertices_subaru, indices_subaru);
+    GLuint VAO_subaru = PrepareVAO(vertices_subaru, indices_subaru);
+    std::string vert_shader_path_subaru = "resources/basic.vert";
+    std::string frag_shader_path_subaru = "resources/basic.frag";
+    GLuint prog_subaru = PrepareShaderProgram(vert_shader_path_subaru, frag_shader_path_subaru);
 
+    glm::vec3 where_to_look(0.0f, 0.0f, 0.0f);
+    glm::vec3 player_position(0.0f, 0.0f, 0.5f);
     while(!glfwWindowShouldClose(globals.window)) {
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -416,13 +418,33 @@ int main()
         player_position.z += cameraStep_size * camera_movement_z * delta_t;
         player_position.x += cameraStep_size * camera_movement_x * delta_t;
         
-        where_to_look.z += cameraStep_size * camera_movement_z * delta_t;
-        where_to_look.x += cameraStep_size * camera_movement_x * delta_t;
+        //where_to_look.z += cameraStep_size * camera_movement_z * delta_t;
+        //where_to_look.x += cameraStep_size * camera_movement_x * delta_t;
 
         glm::mat4 v_m = glm::lookAt(player_position, //position of camera
             where_to_look,
             glm::vec3(0, 1, 0)  //UP direction
-        );      
+        );
+
+        std::cout << "Player position "<< "x: " << player_position.x<< ", y: " << player_position.y << ", z: " << player_position.z << '\n';
+        //std::cout << "Looking at      " << "x: " << where_to_look.x << ", y: " << where_to_look.y << ", z: " << where_to_look.z << '\n';
+        //subaru car
+        {
+            glUseProgram(prog_subaru);
+            glBindVertexArray(VAO_subaru);
+
+            // Model Matrix
+            glm::mat4 m_m = glm::identity<glm::mat4>();
+            //m_m = glm::translate(m_m, glm::vec3(width / 2, height / 2, 0.0));
+            //m_m = glm::scale(m_m, glm::vec3(500.0f));
+            m_m = glm::rotate(m_m, glm::radians(50.0f * (float)glfwGetTime()), glm::vec3(0.0f, 0.5f, 0.0f));
+            glUniformMatrix4fv(glGetUniformLocation(prog_subaru, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
+            glUniformMatrix4fv(glGetUniformLocation(prog_subaru, "uV_m"), 1, GL_FALSE, glm::value_ptr(v_m));
+            glUniformMatrix4fv(glGetUniformLocation(prog_subaru, "uProj_M"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+            // =====================================================================================================
+            glDrawElements(GL_TRIANGLES, indices_subaru.size(), GL_UNSIGNED_INT, 0);
+        }
+        /*
         //trojuhelnik
         {
             glUseProgram(prog_h);
@@ -467,7 +489,7 @@ int main()
             glUniformMatrix4fv(glGetUniformLocation(prog_h_chess, "uProj_M"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
             // =====================================================================================================
             glDrawElements(GL_TRIANGLES, indices_chess.size(), GL_UNSIGNED_INT, 0);
-        }
+        }*/
 
         glfwSwapBuffers(globals.window);
         glfwPollEvents();
