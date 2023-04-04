@@ -147,6 +147,7 @@
     <ClCompile Include="OBJloader.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="vertex.h" />
     <ClInclude Include="OBJloader.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>

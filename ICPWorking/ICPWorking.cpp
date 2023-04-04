@@ -8,7 +8,6 @@
 #include <GLFW/glfw3.h> //knihovna pro zálkladní obsulu systému (klávesnice/myš)
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
-#include <glm/glm.hpp>
 
 #include <numeric>
 #include <thread>
@@ -17,9 +16,7 @@
 #include <fstream>
 
 #include "OBJloader.h"
-
-
-
+#include "vertex.h"
 
 void run_2D_raster_processing();
 void draw_cross_relative(cv::Mat& img, cv::Point2f center_relative, int size);
@@ -30,12 +27,6 @@ cv::Point2f find_center_Y(cv::Mat& frame);
 cv::Point2f find_center_HSV(cv::Mat& frame);
 
 
-struct vertex {
-    glm::vec3 position; // Vertex pos
-    glm::vec3 color; // Color
-    glm::vec2 texCoor; // Texture coordinates
-    glm::vec3 normal; // Normal used for light reflectivity
-};
 GLuint PrepareVAO(std::vector<vertex> vertices, std::vector<GLuint> indices);
 
 typedef struct image_data {
