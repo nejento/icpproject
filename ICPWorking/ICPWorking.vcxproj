@@ -145,8 +145,10 @@
   <ItemGroup>
     <ClCompile Include="ICPWorking.cpp" />
     <ClCompile Include="OBJloader.cpp" />
+    <ClCompile Include="RealtimeRasterProcessing.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="RealtimeRasterProcessing.h" />
     <ClInclude Include="vertex.h" />
     <ClInclude Include="OBJloader.h" />
     <ClInclude Include="resource.h" />

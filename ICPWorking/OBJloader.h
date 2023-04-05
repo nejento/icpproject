@@ -16,7 +16,8 @@ bool loadOBJ(
 bool loadOBJ(
 	const char* path,
 	std::vector <vertex>& out_vertices,
-	std::vector <GLuint>& out_indices
+	std::vector <GLuint>& out_indices,
+	glm::vec3 scale
 );
 
 #endif

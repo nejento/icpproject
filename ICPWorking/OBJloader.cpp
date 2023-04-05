@@ -4,6 +4,7 @@
 
 #include "OBJloader.h"
 #include "vertex.h"
+#include <iostream>
 
 #define array_cnt(a) ((unsigned int)(sizeof(a)/sizeof(a[0])))
 
@@ -95,7 +96,7 @@ bool loadOBJ(const char * path, std::vector < glm::vec3 > & out_vertices, std::v
 //================================================================================================================================
 //================================================================================================================================
 
-bool loadOBJ(const char* path, std::vector <vertex>& out_vertices, std::vector <GLuint>& indices) {
+bool loadOBJ(const char* path, std::vector <vertex>& out_vertices, std::vector <GLuint>& indices, glm::vec3 scale) {
 	std::vector< unsigned int > vertexIndices, uvIndices, normalIndices;
 	std::vector< glm::vec3 > temp_vertices;
 	std::vector< glm::vec2 > temp_uvs;
@@ -152,12 +153,12 @@ bool loadOBJ(const char* path, std::vector <vertex>& out_vertices, std::vector <
 			index += 6;
 		}
 	}
-
+	std::cout << "loadOBJ: Vertex length: " << temp_vertices.size() << '\n';
+	std::cout << "loadOBJ: normals length: " << temp_normals.size() << '\n';
 	
 	//these are jsut testing for potential features. Might pass them as argument later.
-	glm::vec3 color = { 1, 1, 1 };  //color of all tringales in the model
-	glm::vec3 scale = { 1, 1, 1 };	//scale of the whole model
-	glm::vec3 coords = { 0, -0.5, 0 };//position of the whole model in the scene
+	glm::vec3 color = { 0, 1, 0 };  //color of all tringales in the model
+	glm::vec3 coords = { 0, 0, 0 };//position of the whole model in the scene
 
 
 	//TODO: load save normals to the vertex
