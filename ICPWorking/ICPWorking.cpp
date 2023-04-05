@@ -9,6 +9,7 @@
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
 
+
 #include <numeric>
 #include <thread>
 #include <vector>
@@ -32,6 +33,7 @@ GLuint PrepareVAO(std::vector<vertex> vertices, std::vector<GLuint> indices);
 
 typedef struct s_globals {
     GLFWwindow* window;
+    float fov = 45;
     int height;
     int width;
     double app_start_time;
@@ -45,9 +47,11 @@ s_globals globals;
 glm::vec4 color = { 1.0f, 1.0f, 1.0f, 0.0f };
 
 
-float cameraStep_size = 0.9;
-int camera_movement_x = 0;
-int camera_movement_z = 0;
+
+glm::vec3 cameraPosition(0.0f, 0.0f, 0.0f);
+glm::vec3 cameraFront(0.0f, 0.0f, -1.0f);
+glm::vec3 cameraUP(0.0f, 1.0f, 0.0f);
+double delta_t = 0; //how much time has passed
 
 void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
 {
@@ -93,6 +97,127 @@ void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum se
         ", message = '" << message << '\'' << std::endl;
 }
 
+
+
+
+void error_callback(int error, const char* description)
+{
+    std::cerr << "Error: " << description << std::endl;
+}
+
+bool moveForward = false;
+bool moveBackward = false;
+bool moveLeft = false;
+bool moveRight = false;
+
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if (key == GLFW_KEY_B && action == GLFW_PRESS)
+        color = { 0.0f, 0.0f, 1.0f, 0.0f };
+    if (key == GLFW_KEY_R && action == GLFW_PRESS)
+        color = { 1.0f, 0.0f, 0.0f, 0.0f };
+    if (key == GLFW_KEY_G && action == GLFW_PRESS)
+        color = { 0.0f, 1.0f, 0.0f, 0.0f };
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, GLFW_TRUE);
+    
+
+    if (key == GLFW_KEY_W && action == GLFW_PRESS)
+        moveForward = true;
+    if (key == GLFW_KEY_S && action == GLFW_PRESS)
+        moveBackward = true;
+    if (key == GLFW_KEY_A && action == GLFW_PRESS)
+        moveLeft = true;
+    if (key == GLFW_KEY_D && action == GLFW_PRESS) {
+        moveRight = true;
+    }
+
+    if (key == GLFW_KEY_W && action == GLFW_RELEASE)
+        moveForward = false;
+    if (key == GLFW_KEY_S && action == GLFW_RELEASE)
+        moveBackward = false;
+    if (key == GLFW_KEY_A && action == GLFW_RELEASE)
+        moveLeft = false;
+    if (key == GLFW_KEY_D && action == GLFW_RELEASE) {
+        moveRight = false;
+    }
+
+
+
+    if (key == GLFW_KEY_F && action == GLFW_PRESS)
+        if (globals.fullscreen) {
+            glfwSetWindowMonitor(window, nullptr, globals.x, globals.y, 800, 800, 0);
+            globals.fullscreen = false;
+        }
+        else {
+            glfwGetWindowSize(window, &globals.x, &globals.y);
+            GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+            const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+            glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+            globals.fullscreen = true;
+        }
+
+}
+
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+    if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
+        std::cout << "MOUSE_RIGHT" << '\n';
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+        std::cout << "MOUSE_LEFT" << '\n';
+}
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+    std::cout << "x offset: " << xoffset << " , y offset: " << yoffset << '\n';
+}
+bool firstMouseMovement = true;
+float last_mousePosition_X = 0;
+float last_mousePosition_Y = 0;
+float mouseSensitivity = 0.03f;
+float yaw = 0;
+float pitch = 0;
+
+
+float clip(float n, float min, float max) {
+    return std::max(min, std::min(n, max));
+}
+void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
+{
+    if (firstMouseMovement) {
+        firstMouseMovement = false;
+        last_mousePosition_X = xpos;
+        last_mousePosition_Y = ypos;
+    }
+
+    float mouseOffset_Y = ypos - last_mousePosition_Y; //reversed to prevent inverted mouse movement
+    float mouseOffset_X = last_mousePosition_X - xpos;
+    last_mousePosition_X = xpos;
+    last_mousePosition_Y = ypos;
+
+    yaw  += mouseOffset_X * mouseSensitivity;
+    pitch += mouseOffset_Y * mouseSensitivity;
+    pitch = clip(pitch, -89, 89);
+
+    cameraFront.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+    cameraFront.y = sin(glm::radians(pitch));
+    cameraFront.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+    cameraFront = glm::normalize(cameraFront);
+    std::cout << "cameraFront: " << "x: " << cameraFront.x << " , y: " << cameraFront.y << "z: "<< cameraFront.z <<'\n';
+}
+
+
+static void finalize(int code)
+{
+    // ...
+
+    // Close OpenGL window if opened and terminate GLFW  
+    if (globals.window)
+        glfwDestroyWindow(globals.window);
+    glfwTerminate();
+
+    // ...
+}
 void init_glew(void)
 {
     //
@@ -130,64 +255,6 @@ void init_glew(void)
         std::cout << "GL_DEBUG enabled." << std::endl;
     }
 }
-
-
-void error_callback(int error, const char* description)
-{
-    std::cerr << "Error: " << description << std::endl;
-}
-
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
-{
-    if (key == GLFW_KEY_B && action == GLFW_PRESS)
-        color = { 0.0f, 0.0f, 1.0f, 0.0f };
-    if (key == GLFW_KEY_R && action == GLFW_PRESS)
-        color = { 1.0f, 0.0f, 0.0f, 0.0f };
-    if (key == GLFW_KEY_G && action == GLFW_PRESS)
-        color = { 0.0f, 1.0f, 0.0f, 0.0f };
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, GLFW_TRUE);
-    
-    if (key == GLFW_KEY_W && action == GLFW_PRESS)
-        camera_movement_z = -1;
-    if (key == GLFW_KEY_S && action == GLFW_PRESS)
-        camera_movement_z = +1;
-    if (key == GLFW_KEY_A && action == GLFW_PRESS)
-        camera_movement_x = -1;
-    if (key == GLFW_KEY_D && action == GLFW_PRESS)
-        camera_movement_x = +1;
-
-    if ((key == GLFW_KEY_W|| key == GLFW_KEY_S) && action == GLFW_RELEASE)
-        camera_movement_z = 0;
-    if ((key == GLFW_KEY_A || key == GLFW_KEY_D) && action == GLFW_RELEASE)
-        camera_movement_x = 0;
-
-
-    if (key == GLFW_KEY_F && action == GLFW_PRESS)
-        if (globals.fullscreen) {
-            glfwSetWindowMonitor(window, nullptr, globals.x, globals.y, 800, 800, 0);
-            globals.fullscreen = false;
-        }
-        else {
-            glfwGetWindowSize(window, &globals.x, &globals.y);
-            GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-            const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-            glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
-            globals.fullscreen = true;
-        }
-
-}
-static void finalize(int code)
-{
-    // ...
-
-    // Close OpenGL window if opened and terminate GLFW  
-    if (globals.window)
-        glfwDestroyWindow(globals.window);
-    glfwTerminate();
-
-    // ...
-}
 static void init_glfw(void)
 {
     //
@@ -220,6 +287,8 @@ static void init_glfw(void)
         finalize(EXIT_FAILURE);
     }
 
+
+    glfwSetInputMode(globals.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     // Get some GLFW info.
     {
         int major, minor, revision;
@@ -236,23 +305,6 @@ static void init_glfw(void)
 
 }
 
-void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
-{
-    if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
-        std::cout << "MOUSE_RIGHT" << '\n';
-    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
-        std::cout << "MOUSE_LEFT" << '\n';
-}
-
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
-{
-    std::cout << "x offset: " << xoffset << " , y offset: " << yoffset << '\n';
-}
-
-void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
-{
-    std::cout << "x pos: " << xpos << " , y pos: " << ypos << '\n';
-}
 
 
 std::string textFileRead(const std::string fn) {
@@ -299,6 +351,8 @@ std::string getProgramInfoLog(const GLuint obj) {
 void GenerateChessPattern(std::vector<vertex>& vertices_chess, cvflann::lsh::Bucket& indices_chess);
 
 GLuint PrepareShaderProgram(std::string& vert_shader_path, std::string& frag_shader_path);
+
+void HandleCameraMovement();
 
 //===================================================== MAIN =====================================================
 int main()
@@ -370,7 +424,7 @@ int main()
     GenerateChessPattern(vertices_chess, indices_chess);
     GLuint VAO_chess = PrepareVAO(vertices_chess, indices_chess);
     // set visible area
-    double last_frame_time = glfwGetTime();
+    double last_frame = glfwGetTime();
     
     //======================LOADED=MODEL=======================
     std::vector<vertex> vertices_subaru = {};
@@ -388,33 +442,32 @@ int main()
     glViewport(0, 0, width, height);
     float ratio = static_cast<float>(width) / height;
     glm::mat4 projectionMatrix = glm::perspective(
-        glm::radians(75.0f), // The vertical Field of View, in radians: the amount of "zoom". Think "camera lens". Usually between 90° (extra wide) and 30° (quite zoomed in)
+        glm::radians(globals.fov), // The vertical Field of View, in radians: the amount of "zoom". Think "camera lens". Usually between 90° (extra wide) and 30° (quite zoomed in)
         ratio,			     // Aspect Ratio. Depends on the size of your window.
-        0.0001f,               // Near clipping plane. Keep as big as possible, or you'll get precision issues.
-        2.0f             // Far clipping plane. Keep as little as possible.
+        0.01f,               // Near clipping plane. Keep as big as possible, or you'll get precision issues.
+        100.0f             // Far clipping plane. Keep as little as possible.
     );
     //set uniform for shaders - projection matrix
-    glUniformMatrix4fv(glGetUniformLocation(prog_h, "uProj_M"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
-    glm::vec3 where_to_look(0.0f, 0.0f, 0.0f);
-    glm::vec3 player_position(0.0f, 0.0f, 0.5f);
+    glUniformMatrix4fv(glGetUniformLocation(prog_subaru, "uProj_M"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+
+    last_frame = glfwGetTime();
     while(!glfwWindowShouldClose(globals.window)) {
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        double delta_t = last_frame_time - glfwGetTime();
-        last_frame_time = glfwGetTime();
-        player_position.z += cameraStep_size * camera_movement_z * delta_t;
-        player_position.x += cameraStep_size * camera_movement_x * delta_t;
-        
-        //where_to_look.z += cameraStep_size * camera_movement_z * delta_t;
-        //where_to_look.x += cameraStep_size * camera_movement_x * delta_t;
+        float current_frame = glfwGetTime();
+        delta_t = current_frame - last_frame;
+        last_frame = current_frame;
+       
 
-        glm::mat4 v_m = glm::lookAt(player_position, //position of camera
-            where_to_look,
-            glm::vec3(0, 1, 0)  //UP direction
+        glm::mat4 view_m = glm::lookAt(
+            cameraPosition, //from where
+            cameraPosition+cameraFront,  //to where
+            cameraUP  //UP direction
         );
+        //===Movement================
+        HandleCameraMovement();
 
-        std::cout << "Player position "<< "x: " << player_position.x<< ", y: " << player_position.y << ", z: " << player_position.z << '\n';
-        //std::cout << "Looking at      " << "x: " << where_to_look.x << ", y: " << where_to_look.y << ", z: " << where_to_look.z << '\n';
+        //std::cout << "Player position "<< "x: " << cameraPosition.x<< ", y: " << cameraPosition.y << ", z: " << cameraPosition.z << '\n';
         //subaru car
         {
             glUseProgram(prog_subaru);
@@ -424,15 +477,31 @@ int main()
             glm::mat4 m_m = glm::identity<glm::mat4>();
             //m_m = glm::translate(m_m, glm::vec3(width / 2, height / 2, 0.0));
             //m_m = glm::scale(m_m, glm::vec3(500.0f));
-            m_m = glm::rotate(m_m, glm::radians(50.0f * (float)glfwGetTime()), glm::vec3(0.0f, 0.5f, 0.0f));
+            //m_m = glm::rotate(m_m, glm::radians(50.0f * (float)glfwGetTime()), glm::vec3(0.0f, 0.5f, 0.0f));
             glUniformMatrix4fv(glGetUniformLocation(prog_subaru, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
-            glUniformMatrix4fv(glGetUniformLocation(prog_subaru, "uV_m"), 1, GL_FALSE, glm::value_ptr(v_m));
+            glUniformMatrix4fv(glGetUniformLocation(prog_subaru, "uV_m"), 1, GL_FALSE, glm::value_ptr(view_m));
             glUniformMatrix4fv(glGetUniformLocation(prog_subaru, "uProj_M"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
             // =====================================================================================================
             glDrawElements(GL_TRIANGLES, indices_subaru.size(), GL_UNSIGNED_INT, 0);
         }
-        /*
-        //trojuhelnik
+        //podlaha
+        {
+            glUseProgram(prog_h_chess);
+            glBindVertexArray(VAO_chess);
+
+            // Model Matrix
+            glm::mat4 m_m = glm::identity<glm::mat4>();
+            //m_m = glm::translate(m_m, glm::vec3(width / 2, height / 2, 0.0));
+            //m_m = glm::scale(m_m, glm::vec3(500.0f));
+            //m_m = glm::rotate(m_m, glm::radians(50.0f * (float)glfwGetTime()), glm::vec3(0.3f, 0.1f, 0.5f));
+            glUniformMatrix4fv(glGetUniformLocation(prog_h_chess, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
+            glUniformMatrix4fv(glGetUniformLocation(prog_h_chess, "uV_m"), 1, GL_FALSE, glm::value_ptr(view_m));
+            glUniformMatrix4fv(glGetUniformLocation(prog_h_chess, "uProj_M"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+            // =====================================================================================================
+            glDrawElements(GL_TRIANGLES, indices_chess.size(), GL_UNSIGNED_INT, 0);
+        }
+
+        /*//trojuhelnik
         {
             glUseProgram(prog_h);
             glBindVertexArray(VAO1);
@@ -443,12 +512,12 @@ int main()
             //m_m = glm::scale(m_m, glm::vec3(500.0f));
             m_m = glm::rotate(m_m, glm::radians(50.0f * (float)glfwGetTime()), glm::vec3(0.3f, 0.1f, 0.5f));
             glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
-            glUniformMatrix4fv(glGetUniformLocation(prog_h, "uV_m"), 1, GL_FALSE, glm::value_ptr(v_m));
+            glUniformMatrix4fv(glGetUniformLocation(prog_h, "uV_m"), 1, GL_FALSE, glm::value_ptr(view_m));
             glUniformMatrix4fv(glGetUniformLocation(prog_h, "uProj_M"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
             // =====================================================================================================
             glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
-        }
-        
+        }*/
+        /*
         //kruh
         {
             glUseProgram(prog_h2); // nutne upravit, uz nemame barvu => nový shared
@@ -482,6 +551,22 @@ int main()
         glfwPollEvents();
     }
     std::cout << "Program ended." << '\n';
+}
+
+void HandleCameraMovement()
+{
+    float cameraSpeed = 2.5f * delta_t;
+    //std::cout << "Delta = " << delta_t<< "\n";
+    if(moveForward) cameraPosition += cameraSpeed * cameraFront;
+    if(moveBackward)cameraPosition -= cameraSpeed * cameraFront;
+    if(moveRight) {
+        glm::vec3 cameraRight = glm::normalize(glm::cross(cameraFront, cameraUP));
+        cameraPosition += cameraRight * cameraSpeed;
+    }
+    if (moveLeft) {
+        glm::vec3 cameraRight = glm::normalize(glm::cross(cameraFront, cameraUP));
+        cameraPosition -= cameraRight * cameraSpeed;
+    }
 }
 
 
