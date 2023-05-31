@@ -1,49 +1,45 @@
 ﻿
-// cv02.cpp : This file contains the 'main' function. Program execution begins and ends there.
+// ICPWorking.cpp : This file contains the 'main' function. Program execution begins and ends there
 //
 
+// -- Includes -- 
 
-//funkce find_center_HSV
-// samostatné vlákno img_process_code
-//      dostane kameru
-//      dostane kameru
-/*      read file
-    structira img_data_s
-        Point2f
-        Mat frame - data snímku
-    unique_pnt na img_data_s (muze na to ukazovat jen jedna promena)
-        nidky se tak obě vlákna nedostanou naraz do toho
-        zmena pointeru( frame.copyTo(img_data_local -> img_data_local->frame))
-
-
-*/
 #include <iostream>
 #include <chrono>
-#include <opencv2/opencv.hpp>
-
-#include <GL/glew.h> //pro jednoodušší práci s extentions 
-#include <GL/wglew.h> 
-
-#include <GLFW/glfw3.h> //knihovna pro zálkladní obsulu systému (klávesnice/myš)
-#include <glm/glm.hpp>
-#include <glm/ext.hpp>
-#include <glm/common.hpp>
-
 #include <numeric>
 #include <thread>
 #include <vector>
 #include <memory> //for smart pointers (unique_ptr)
 #include <fstream>
 
+// OpenCV
+#include <opencv2/opencv.hpp>
 
+// OpenGL Extension Wrangler
+#include <GL/glew.h> //pro jednoodušší práci s extentions 
+#include <GL/wglew.h> 
+
+// GLFW toolkit
+#include <GLFW/glfw3.h> //knihovna pro zálkladní obsulu systému (klávesnice/myš)
+
+// OpenGL Math
+#include <glm/glm.hpp>
+#include <glm/ext.hpp>
+#include <glm/common.hpp>
+
+
+// -- Headers -- 
+
+void init_glew(void);
+void init_glfw(void);
+void error_callback(int error, const char* description);
 void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void*
     userParam);
-void draw_cross_relative(cv::Mat& img, cv::Point2f center_relative, int size);
-void draw_cross(cv::Mat& img, int x, int y, int size);
 
-void image_processing(std::string string);
-cv::Point2f find_center_Y(cv::Mat& frame);
-cv::Point2f find_center_HSV(cv::Mat& frame);
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+
+
+// -- Global variables, typedefs --
 
 glm::vec4 color(1, 0, 0, 1);
 
@@ -70,50 +66,9 @@ s_globals globals;
 std::mutex img_access_mutex;
 bool image_proccessing_alive;
 
+// -- Templated funkce -- 
 
-std::string textFileRead(const std::string fn) {
-    std::ifstream file;
-    file.exceptions(std::ifstream::badbit);
-    std::stringstream ss;
-    try {
-        file.open(fn);
-        std::string content;
-        ss << file.rdbuf();
-    }
-    catch (const std::ifstream::failure& e) {
-        std::cerr << "Error opening file: " << fn <<
-            std::endl;
-        exit(EXIT_FAILURE);
-    }
-    return std::move(ss.str());
-}
-
-std::string getShaderInfoLog(const GLuint obj) {
-    int infologLength = 0;
-    std::string s;
-    glGetShaderiv(obj, GL_INFO_LOG_LENGTH, &infologLength);
-    if (infologLength > 0) {
-        std::vector<char> v(infologLength);
-        glGetShaderInfoLog(obj, infologLength, NULL,
-            v.data());
-        s.assign(begin(v), end(v));
-    }
-    return s;
-}
-
-std::string getProgramInfoLog(const GLuint obj) {
-    int infologLength = 0;
-    std::string s;
-    glGetProgramiv(obj, GL_INFO_LOG_LENGTH, &infologLength);
-    if (infologLength > 0) {
-        std::vector<char> v(infologLength);
-        glGetProgramInfoLog(obj, infologLength, NULL,
-            v.data());
-        s.assign(begin(v), end(v));
-    }
-    return s;
-}
-
+// Templated: Inicializace GL extensions GLEW, použitelné PO vytvoření GL contextu
 void init_glew(void)
 {
     //
@@ -155,6 +110,7 @@ void init_glew(void)
 
 }
 
+// Templated
 void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void*
     userParam)
 {
@@ -201,43 +157,59 @@ void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum se
 }
 
 
+// Templated
+std::string textFileRead(const std::string fn) {
+    std::ifstream file;
+    file.exceptions(std::ifstream::badbit);
+    std::stringstream ss;
+    try {
+        file.open(fn);
+        std::string content;
+        ss << file.rdbuf();
+    }
+    catch (const std::ifstream::failure& e) {
+        std::cerr << "Error opening file: " << fn <<
+            std::endl;
+        exit(EXIT_FAILURE);
+    }
+    return std::move(ss.str());
+}
+
+// Templated: Vypisuje informace o shaderu
+std::string getShaderInfoLog(const GLuint obj) {
+    int infologLength = 0;
+    std::string s;
+    glGetShaderiv(obj, GL_INFO_LOG_LENGTH, &infologLength);
+    if (infologLength > 0) {
+        std::vector<char> v(infologLength);
+        glGetShaderInfoLog(obj, infologLength, NULL,
+            v.data());
+        s.assign(begin(v), end(v));
+    }
+    return s;
+}
+
+// Templated: Vypisuje informace o programu
+std::string getProgramInfoLog(const GLuint obj) {
+    int infologLength = 0;
+    std::string s;
+    glGetProgramiv(obj, GL_INFO_LOG_LENGTH, &infologLength);
+    if (infologLength > 0) {
+        std::vector<char> v(infologLength);
+        glGetProgramInfoLog(obj, infologLength, NULL,
+            v.data());
+        s.assign(begin(v), end(v));
+    }
+    return s;
+}
+
+// Templated: Zachytávání chyb
 void error_callback(int error, const char* description)
 {
     std::cerr << "Error: " << description << std::endl;
 }
 
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
-{
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, GLFW_TRUE);
-    if (key == GLFW_KEY_W && action == GLFW_PRESS)
-        std::cout << "WWWWWWWWWW" << '\n';
-    if (key == GLFW_KEY_S && action == GLFW_PRESS)
-        std::cout << "SSSSSSSSSS" << '\n';
-    if (key == GLFW_KEY_A && action == GLFW_PRESS)
-        std::cout << "AAAAAAAAAA" << '\n';
-    if (key == GLFW_KEY_D && action == GLFW_PRESS)
-        std::cout << "DDDDDDDDDD" << '\n';
-    if (key == GLFW_KEY_R && action == GLFW_PRESS)
-        color = glm::vec4(1, 0, 0, 1);
-    if (key == GLFW_KEY_G && action == GLFW_PRESS)
-        color = glm::vec4(0, 1, 0, 1);
-    if (key == GLFW_KEY_B && action == GLFW_PRESS)
-        color = glm::vec4(0, 0, 1, 1);
-    if (key == GLFW_KEY_F && action == GLFW_PRESS)
-        if (globals.fullscreen) {
-            glfwSetWindowMonitor(window, nullptr, globals.x, globals.y, 640, 480, 0);
-            globals.fullscreen = false;
-        }
-        else {
-            glfwGetWindowSize(window, &globals.x, &globals.y);
-            GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-            const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-            glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
-            globals.fullscreen = true;
-        }
-
-}
+// Templated: Uzavření a ukončení okna
 static void finalize(int code)
 {
     // ...
@@ -249,13 +221,15 @@ static void finalize(int code)
 
     // ...
 }
+
+// Editable: Nastavení GLFW
 static void init_glfw(void)
 {
     //
     // GLFW init.
     //
 
-        // set error callback first
+    // set error callback first
     glfwSetErrorCallback(error_callback);
 
     //initialize GLFW library
@@ -289,15 +263,65 @@ static void init_glfw(void)
         std::cout << "Compiled against GLFW " << GLFW_VERSION_MAJOR << '.' << GLFW_VERSION_MINOR << '.' << GLFW_VERSION_REVISION << std::endl;
     }
 
-    glfwMakeContextCurrent(globals.window);                                        // Set current window.
-    glfwGetFramebufferSize(globals.window, &globals.width, &globals.height);    // Get window size.
+    glfwMakeContextCurrent(globals.window);                                       // Set current window.
+    glfwGetFramebufferSize(globals.window, &globals.width, &globals.height);      // Get window size.
     //glfwSwapInterval(0);                                                        // Set V-Sync OFF.
-    glfwSwapInterval(1);                                                        // Set V-Sync ON.
+    glfwSwapInterval(1);                                                          // Set V-Sync ON.
 
-
-    globals.app_start_time = glfwGetTime();                                        // Get start time.
+    globals.app_start_time = glfwGetTime();                                       // Get start time.
 }
 
+// -- Input callbacky --
+
+/*
+* Editable: Key callback function
+* @brief Function is called when key is pressed
+* @param window Window that called the function
+* @param key Key that was pressed
+* @param scancode
+* @param action Action that was performed
+* @param mods
+*/
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, GLFW_TRUE);
+    if (key == GLFW_KEY_W && action == GLFW_PRESS)
+        std::cout << "WWWWWWWWWW" << '\n';
+    if (key == GLFW_KEY_S && action == GLFW_PRESS)
+        std::cout << "SSSSSSSSSS" << '\n';
+    if (key == GLFW_KEY_A && action == GLFW_PRESS)
+        std::cout << "AAAAAAAAAA" << '\n';
+    if (key == GLFW_KEY_D && action == GLFW_PRESS)
+        std::cout << "DDDDDDDDDD" << '\n';
+    if (key == GLFW_KEY_R && action == GLFW_PRESS)
+        color = glm::vec4(1, 0, 0, 1);
+    if (key == GLFW_KEY_G && action == GLFW_PRESS)
+        color = glm::vec4(0, 1, 0, 1);
+    if (key == GLFW_KEY_B && action == GLFW_PRESS)
+        color = glm::vec4(0, 0, 1, 1);
+    if (key == GLFW_KEY_F && action == GLFW_PRESS)
+        if (globals.fullscreen) {
+            glfwSetWindowMonitor(window, nullptr, globals.x, globals.y, 640, 480, 0);
+            globals.fullscreen = false;
+        }
+        else {
+            glfwGetWindowSize(window, &globals.x, &globals.y);
+            GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+            const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+            glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+            globals.fullscreen = true;
+        }
+
+}
+
+/* Editable: Mouse button callback function
+* @brief Function is called when mouse button is pressed
+* @param window Window that called the function
+* @param button Button that was pressed
+* @param action Action that was performed
+* @param mods
+*/
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
     if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
@@ -306,33 +330,46 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
         std::cout << "MOUSE_LEFT" << '\n';
 }
 
+/* Editable: Scroll callback function
+* @brief Function is called when mouse wheel is scrolled
+* @param window Window that called the function
+* @param xoffset
+* @param yoffset
+*/
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
     std::cout << "x offset: " << xoffset << " , y offset: " << yoffset << '\n';
 }
 
+/* Editable: Cursor position callback function
+* @brief Function is called when cursor is moved
+* @param window Window that called the function
+* @param xpos
+* @param ypos
+*/
 void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 {
     std::cout << "x pos: " << xpos << " , y pos: " << ypos << '\n';
 }
 
-
-
+// -- Main --
 
 //===================================================== MAIN =====================================================
+// Editable: Hlavní funkce
 int main()
 {
-    init_glfw();
-    init_glew();
+    init_glfw(); //Init GLFW library
+    init_glew(); //Init OpenGL Extension Wrangler Library
 
     glfwSetCursorPosCallback(globals.window, cursor_position_callback);
     glfwSetScrollCallback(globals.window, scroll_callback);
     glfwSetMouseButtonCallback(globals.window, mouse_button_callback);
     glfwSetKeyCallback(globals.window, key_callback);
 
-    //Enable Z buffer test
+    //Enable Z buffer test (zajistí správné vykreslování objektů)
     glEnable(GL_DEPTH_TEST);
 
+    //Enable back face culling (znemožní vykreslování vnitřních ploch)
     glEnable(GL_CULL_FACE);
 
 
@@ -532,125 +569,4 @@ int main()
     }
 
 
-}
-
-void image_processing(std::string string) {
-
-    while (true)
-    {
-        cv::Mat frame;
-        globals.capture.read(frame);
-        if (frame.empty())
-        {
-            std::cerr << "Device closed (or video at the end)" << std::endl;
-            break;
-        }
-
-        //cv::Point2f center_relative = find_center_Y(frame);
-        cv::Point2f center_relative = find_center_HSV(frame);
-
-        img_access_mutex.lock();
-        image_data_shared = std::make_unique<image_data>();
-        image_data_shared->frame = frame;
-        image_data_shared->center = center_relative;
-        img_access_mutex.unlock();
-
-        //auto end = std::chrono::steady_clock::now();
-        //std::chrono::duration<double> elapsed_seconds = end - start;
-        //std::cout << "Elapsed time: " << elapsed_seconds.count() << "sec" << std::endl;
-        //std::cout << "Hello World!";
-
-        cv::waitKey(1);
-    }
-    image_proccessing_alive = false;
-}
-
-cv::Point2f find_center_HSV(cv::Mat& frame)
-{
-    cv::Mat frame_hsv;
-cv:cvtColor(frame, frame_hsv, cv::COLOR_BGR2HSV);
-
-    //HSV range(0...180, 0...255, 0...255);
-    //45-75 = green
-    cv::Scalar lower_bound(45, 80, 80);
-    cv::Scalar upper_bound(70, 255, 255);
-    cv::Mat frame_treshold;
-
-    cv::inRange(frame_hsv, lower_bound, upper_bound, frame_treshold);
-
-    //cv::namedWindow("frametr");
-    //cv::imshow("frametr", frame_treshold);
-
-    std::vector<cv::Point> white_pixels;
-    cv::findNonZero(frame_treshold, white_pixels);
-    cv::Point white_reduced = std::reduce(white_pixels.begin(), white_pixels.end());
-
-    cv::Point2f center_relative((float)white_reduced.x / white_pixels.size() / frame.cols, (float)white_reduced.y / white_pixels.size() / frame.rows);
-
-    return center_relative;
-}
-
-cv::Point2f find_center_Y(cv::Mat& frame) {
-
-    cv::Mat frame2;
-    frame.copyTo(frame2);
-
-    int sx = 0, sy = 0, sw = 0;
-
-    for (int y = 0; y < frame.cols; y++)
-    {
-        for (int x = 0; x < frame.rows; x++)
-        {
-            cv::Vec3b pixel = frame.at<cv::Vec3b>(x, y); //BGR -> 2,1,0
-            unsigned char Y = 0.299 * pixel[2] + 0.587 * pixel[1] + 0.114 * pixel[0];
-
-            if (Y < 228)
-            {
-                Y = 0;
-            }
-            else
-            {
-                Y = 255;
-                sx += x;
-                sy += y;
-                sw++;
-            }
-
-            frame2.at<cv::Vec3b>(x, y) = cv::Vec3b(Y, Y, Y);
-        }
-    }
-
-    cv::Point2f center((float)sy / sw, (float)sx / sw);
-    cv::Point2f center_relative((float)center.x / frame.cols, (float)center.y / frame.rows);
-    //frame2.at<cv::Vec3b>(sx / sw, sy / sw) = cv::Vec3b(0, 0, 255);
-
-    return center_relative;
-}
-
-void draw_cross(cv::Mat& img, int x, int y, int size)
-{
-    cv::Point p1(x - size / 2, y);
-    cv::Point p2(x + size / 2, y);
-    cv::Point p3(x, y - size / 2);
-    cv::Point p4(x, y + size / 2);
-
-    cv::line(img, p1, p2, CV_RGB(255, 0, 0), 3);
-    cv::line(img, p3, p4, CV_RGB(255, 0, 0), 3);
-}
-
-void draw_cross_relative(cv::Mat& img, cv::Point2f center_relative, int size)
-{
-    center_relative.x = std::clamp(center_relative.x, 0.0f, 1.0f);
-    center_relative.y = std::clamp(center_relative.y, 0.0f, 1.0f);
-    size = std::clamp(size, 1, std::min(img.cols, img.rows));
-
-    cv::Point2f center_absolute(center_relative.x * img.cols, center_relative.y * img.rows);
-
-    cv::Point2f p1(center_absolute.x - size / 2, center_absolute.y);
-    cv::Point2f p2(center_absolute.x + size / 2, center_absolute.y);
-    cv::Point2f p3(center_absolute.x, center_absolute.y - size / 2);
-    cv::Point2f p4(center_absolute.x, center_absolute.y + size / 2);
-
-    cv::line(img, p1, p2, CV_RGB(0, 0, 255), 2);
-    cv::line(img, p3, p4, CV_RGB(0, 0, 255), 2);
 }
