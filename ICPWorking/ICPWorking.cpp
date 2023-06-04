@@ -618,6 +618,8 @@ void HandleCameraMovement()
 
 
 //===================================================== END OF MAIN =====================================================
+
+
 GLuint PrepareShaderProgram(std::string& vert_shader_path, std::string& frag_shader_path)
 {
     //(FS = fragment shader, VS = vertex shader)
@@ -676,6 +678,7 @@ GLuint PrepareVAO(std::vector<vertex> vertices, std::vector<GLuint> indices) {
 
     return resultVAO;
 }
+
 void GenerateChessPattern(std::vector<vertex>& vertices_chess, cvflann::lsh::Bucket& indices_chess)
 {
     int min_x = -1;
