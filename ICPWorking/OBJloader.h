@@ -21,7 +21,7 @@ bool loadOBJ(
 	glm::vec3 scale
 );
 */
-
+/*
 bool loadOBJ(
 	const char* path,
 	std::vector <vertex>& out_vertices,
@@ -30,5 +30,6 @@ bool loadOBJ(
 	glm::vec3 scale,
 	glm::vec3 coords
 );
+*/
 
 #endif

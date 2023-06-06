@@ -6,78 +6,608 @@
 * - Přidat zvuk
 */
 
-//=== Includes ===
+// C++ 
 #include <iostream>
 #include <chrono>
 #include <numeric>
-#include <thread>
+#include <cstdio>
+#include <cstdlib>
 #include <vector>
+#include <thread>
 #include <memory> //for smart pointers (unique_ptr)
 #include <fstream>
+#include <sstream>
+#include <random>
+#include <cmath>
 
-// OpenCV
-#include <opencv2/opencv.hpp>
+// OpenCV 
+#include <opencv2\opencv.hpp>
 
 // OpenGL Extension Wrangler
-#include <GL/glew.h> //pro jednodušší práci s extentions 
-#include <GL/wglew.h> 
+#include <GL/glew.h> 
+#include <GL/wglew.h> //WGLEW = Windows GL Extension Wrangler (change for different platform) 
 
 // GLFW toolkit
-#include <GLFW/glfw3.h> //knihovna pro zálkladní obsulu systému (klávesnice/myš)
+#include <GLFW/glfw3.h>
 
-// OpenGL Math
+// OpenGL math
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
+//#include <irrklang/irrKlang.h>
 
-// Other Header files
-#include "OBJloader.h"
-#include "vertex.h"
-#include "RealtimeRasterProcessing.h"
-
-//=== Headers ===
 void init_glew(void);
 void init_glfw(void);
 void error_callback(int error, const char* description);
-void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void*
-	userParam);
+void finalize(int code);
 
-GLuint PrepareVAO(std::vector<vertex> vertices, std::vector<GLuint> indices);
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+void cursor_position_callback(GLFWwindow* window, double xpos, double ypos);
+
+std::string getProgramInfoLog(const GLuint obj);
+std::string getShaderInfoLog(const GLuint obj);
+std::string textFileRead(const std::string fn);
+
 
 GLuint gen_tex(std::string filepath);
-//void tex_setup(int index, int tex);
+void tex_setup(int index, int tex);
 void make_shader(std::string vertex_shader, std::string fragment_shader, GLuint* shader);
 void draw_textured(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix);
 
+struct vertex {
+	glm::vec3 position; // Vertex pos
+	glm::vec3 color; // Color
+	glm::vec3 normal; // Normal
+};
+
+// vertex with texture
+struct tex_vertex {
+	glm::vec3 position;
+	glm::vec2 texcoord;
+	glm::vec3 normal;
+};
+
+std::vector<tex_vertex> tex_vertices[4];
+GLuint texture_id[4];
+
+// create sound engine
+/*
+irrklang::ISoundEngine* engine = irrklang::createIrrKlangDevice();
+*/
+
+void va_setup(int index);
+bool loadOBJ(const char* path, std::vector <vertex>& out_vertices, std::vector <GLuint>& indices, glm::vec3 color, glm::vec3 scale, glm::vec3 coords);
+
+glm::vec3 check_collision(float x, float z);
+std::array<bool, 3> check_objects_collisions(float x, float z);
+void init_object_coords();
+
+void setup_objects();
+
+void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
+
+typedef struct image_data {
+	cv::Point2f center;
+	cv::Mat frame;
+} image_data;
+
+//std::unique_ptr<image_data> image_data_shared;
+
 typedef struct s_globals {
 	GLFWwindow* window;
-	float fov = 45;
 	int height;
 	int width;
 	double app_start_time;
 	cv::VideoCapture capture;
-	bool fullscreen;
-	double last_fps;
+	bool fullscreen = false;
 	int x = 0;
 	int y = 0;
+	double last_fps;
+	float fov = 90.0f;
 } s_globals;
 
 s_globals globals;
-glm::vec4 color = { 1.0f, 1.0f, 1.0f, 0.0f };
 
-glm::vec3 cameraPosition(0.0f, 0.0f, 0.0f);
-glm::vec3 cameraFront(0.0f, 0.0f, -1.0f);
-glm::vec3 cameraUP(0.0f, 1.0f, 0.0f);
+//std::mutex img_access_mutex;
+//bool image_proccessing_alive;
 
-// === Textures storage ===
-GLuint texture_id[4];
-// === VAO storage ===
-GLuint VAO_frog;
- 
-double delta_t = 0; //how much time has passed
+// player & position
+glm::vec3 player_position(-10.0f, 1.0f, -10.0f);
+glm::vec3 looking_position(10.0f, 1.0f, 10.0f);
+glm::vec3 up(0, 1, 0);
+
+GLfloat Yaw = -90.0f;
+GLfloat Pitch = 0.0f;;
+GLfloat Roll = 0.0f;
+
+GLfloat lastxpos = 0.0f;
+GLfloat lastypos = 0.0f;
+#define array_cnt(a) ((unsigned int)(sizeof(a) / sizeof(a[0])))
+
+// movement and sound help variables
+int step_delay = 0;
+bool ouch_ready = true;
+int move_count = 0;
+
+// objects values
+const int n_objects = 16;
+GLuint VAO[n_objects];
+GLuint VBO[n_objects];
+GLuint EBO[n_objects];
+std::vector<vertex> vertex_array[n_objects];
+std::vector<GLuint> indices_array[n_objects];
+glm::vec3 colors[n_objects];
+glm::vec3 scales[n_objects];
+glm::vec3 coordinates[n_objects];
+
+// objects with collisions
+struct coords {
+	float min_x;
+	float max_x;
+	float min_z;
+	float max_z;
+};
+const int n_col_obj = 9;
+std::vector<vertex> col_obj[n_col_obj];
+coords objects_coords[n_col_obj];
 
 GLuint prog_h, prog_tex;
 
-//=== Templated ===
+int main()
+{
+
+	std::mt19937_64 rng;
+	// initialize the random number generator with time-dependent seed
+	uint64_t timeSeed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
+	std::seed_seq ss{ uint32_t(timeSeed & 0xffffffff), uint32_t(timeSeed >> 32) };
+	rng.seed(ss);
+	// initialize a uniform distribution between 0 and 1
+	std::uniform_real_distribution<double> unif(0, 1);
+
+	init_glfw();
+	init_glew();
+
+	if (glfwExtensionSupported("GL_ARB_debug_output"))
+	{
+		glDebugMessageCallback(MessageCallback, 0);
+		glEnable(GL_DEBUG_OUTPUT);
+		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+		std::cout << "GL_DEBUG enabled." << std::endl;
+	}
+
+	// enable Z buffer test
+	glEnable(GL_DEPTH_TEST);
+
+	// ALL objects are non-transparent, cull back face of polygons 
+	glEnable(GL_CULL_FACE);
+
+	// create shaders
+	std::cout << "BASIC SHADER" << '\n';
+	make_shader("resources/my.vert", "resources/my.frag", &prog_h);
+	glUseProgram(prog_h);
+
+	std::cout << "TEXTURE SHADER" << '\n';
+	make_shader("resources/texture.vert", "resources/texture.frag", &prog_tex);
+
+	// load objects
+	setup_objects();
+
+	// set callbacks
+	glfwSetCursorPosCallback(globals.window, cursor_position_callback);
+	glfwSetScrollCallback(globals.window, scroll_callback);
+	glfwSetMouseButtonCallback(globals.window, mouse_button_callback);
+	glfwSetKeyCallback(globals.window, key_callback);
+
+	// frames and time
+	int frame_cnt = 0;
+	globals.last_fps = glfwGetTime();
+
+	// transformations
+	// projection & viewport
+	int width, height;
+	glfwGetWindowSize(glfwGetCurrentContext(), &width, &height);
+
+	float ratio = static_cast<float>(width) / height;
+
+	// set visible area
+	glViewport(0, 0, width, height);
+
+	texture_id[0] = gen_tex("resources/tex/box.png");
+	texture_id[1] = gen_tex("resources/tex/concrete.png");
+	texture_id[2] = gen_tex("resources/tex/brick.png");
+	texture_id[3] = gen_tex("resources/tex/missing.png");
+
+	while (!glfwWindowShouldClose(globals.window)) {
+
+		glm::mat4 projectionMatrix = glm::perspective(
+			glm::radians(globals.fov), // The vertical Field of View, in radians: the amount of "zoom". Think "camera lens". Usually between 90� (extra wide) and 30� (quite zoomed in)
+			ratio,			               // Aspect Ratio. Depends on the size of your window.
+			0.1f,                      // Near clipping plane. Keep as big as possible, or you'll get precision issues.
+			20000.0f                   // Far clipping plane. Keep as little as possible.
+		);
+
+		//set uniform for shaders - projection matrix
+		glUniformMatrix4fv(glGetUniformLocation(prog_h, "uP_m"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+
+		// set light color for shader
+		glUniform4f(glGetUniformLocation(prog_h, "lightColor"), 1.0f, 1.0f, 1.0f, 1.0f);
+
+
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		{
+			glUseProgram(prog_h);
+
+			// Model Matrix
+			glm::mat4 m_m = glm::identity<glm::mat4>();
+
+			// modify Model matrix and send to shaders
+			m_m = glm::scale(m_m, glm::vec3(2.0f));
+
+			// p�ed�n� do shaderu
+			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
+
+			// View matrix
+			glm::mat4 v_m = glm::lookAt(
+				player_position, //position of camera
+				glm::vec3(player_position + looking_position), //where to look
+				up  //UP direction
+			);
+
+			// set light pos in above player for shaders
+			glUniform3f(glGetUniformLocation(prog_h, "lightPos"), player_position.x / 2, player_position.y / 2 + 1.0f, player_position.z / 2);
+			// set camera pos for shaders
+			glUniform3f(glGetUniformLocation(prog_h, "camPos"), player_position.x, player_position.y, player_position.z);
+
+			// p�ed�n� do shaderu
+			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uV_m"), 1, GL_FALSE, glm::value_ptr(v_m));
+
+			// Use buffers
+			for (int i = 1; i < n_objects - 6; i++) {
+				glBindVertexArray(VAO[i]);
+				glDrawElements(GL_TRIANGLES, indices_array[i].size(), GL_UNSIGNED_INT, 0);
+			}
+
+			// move sphere (sun)
+			glm::mat4 temp = m_m;
+			m_m = glm::rotate(m_m, glm::radians(10.0f * (float)glfwGetTime()), glm::vec3(1.0f, 0.0f, 0.0f));
+			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
+			glBindVertexArray(VAO[10]);
+			glDrawElements(GL_TRIANGLES, indices_array[10].size(), GL_UNSIGNED_INT, 0);
+			m_m = temp;
+
+			// rotate teapot
+			temp = m_m;
+			m_m = glm::rotate(m_m, glm::radians(20.0f * (float)glfwGetTime()), glm::vec3(0.0f, 1.0f, 0.0f));
+			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
+			glBindVertexArray(VAO[11]);
+			glDrawElements(GL_TRIANGLES, indices_array[11].size(), GL_UNSIGNED_INT, 0);
+			m_m = temp;
+
+			// move teapot on edge
+			temp = m_m;
+			int edge = 21000;
+			glm::vec3 change = (move_count < edge * 2) ?
+				((move_count < edge) ? glm::vec3(move_count * 0.001f, 0, 0) : glm::vec3(edge * 0.001f, 0, move_count * 0.001f - edge * 0.001f)) :
+				((move_count < edge * 3) ? glm::vec3(edge * 0.003f - move_count * 0.001f, 0, edge / 1000) : glm::vec3(0, 0, edge * 0.004f - move_count * 0.001f));
+			m_m = glm::translate(m_m, change);
+			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
+			glBindVertexArray(VAO[12]);
+			glDrawElements(GL_TRIANGLES, indices_array[12].size(), GL_UNSIGNED_INT, 0);
+			m_m = temp;
+			move_count++;
+			if (move_count == edge * 4) {
+				move_count = 0;
+			}
+			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
+
+			// textured object draw
+			draw_textured(m_m, v_m, projectionMatrix);
+
+		}
+		// Prohodit buffery k vykreslen� a na��t�n�, zaznamenat eventy
+		glfwSwapBuffers(globals.window);
+		glfwPollEvents();
+
+		// frames a time
+		frame_cnt++;
+		double now = glfwGetTime();
+
+		// vyps�n� fps
+		if ((now - globals.last_fps) > 1) {
+			globals.last_fps = now;
+			std::cout << "FPS: " << frame_cnt << std::endl;
+			frame_cnt = 0;
+		}
+	}
+
+	std::cout << "Program ended." << '\n';
+	return (EXIT_SUCCESS);
+}
+
+void error_callback(int error, const char* description)
+{
+	std::cerr << "Error: " << description << std::endl;
+}
+
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+		finalize(EXIT_SUCCESS);
+	//glfwSetWindowShouldClose(window, GLFW_TRUE);
+	if (key == GLFW_KEY_W && action != GLFW_RELEASE)
+		std::cout << 'W';
+	if (key == GLFW_KEY_S && action != GLFW_RELEASE)
+		std::cout << 'S';
+	if (key == GLFW_KEY_A && action != GLFW_RELEASE)
+		std::cout << 'A';
+	if (key == GLFW_KEY_D && action != GLFW_RELEASE)
+		std::cout << 'D';
+	if (key == GLFW_KEY_F && action == GLFW_PRESS) {
+		if (globals.fullscreen) {
+			glfwSetWindowMonitor(window, nullptr, globals.x, globals.y, 640, 480, 0);
+			glViewport(0, 0, 640, 480);
+			globals.fullscreen = false;
+			glfwSetInputMode(globals.window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+		}
+		else {
+			glfwGetWindowSize(window, &globals.x, &globals.y);
+			GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+			const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+			glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+			glViewport(0, 0, mode->width, mode->height);
+			globals.fullscreen = true;
+			glfwSetInputMode(globals.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+		}
+	}
+	float speed = 0.3f;
+
+	if ((glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) || (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)) {
+		glm::vec3 xz = player_position + speed * glm::normalize(glm::cross(looking_position, up));
+		player_position = check_collision(xz.x, xz.z);
+	}
+	if ((glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) || (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)) {
+		glm::vec3 xz = player_position - speed * glm::normalize(glm::cross(looking_position, up));
+		player_position = check_collision(xz.x, xz.z);
+	}
+	if ((glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) || (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)) {
+		float x = player_position.x + looking_position.x * speed;
+		float z = player_position.z + looking_position.z * speed;
+		player_position = check_collision(x, z);
+	}
+	if ((glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) || (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)) {
+		float x = player_position.x - looking_position.x * speed;
+		float z = player_position.z - looking_position.z * speed;
+		player_position = check_collision(x, z);
+	}
+	std::cout << "Player position: " << player_position.x << " " << player_position.y << " " << player_position.z << " ";
+}
+
+glm::vec3 check_collision(float x, float z) {
+	std::array<bool, 3> col = check_objects_collisions(x, z);
+	if (col[0]) {
+		//if object isn't in bounds of any object, move freely
+		player_position.x = x;
+		player_position.z = z;
+		ouch_ready = true;
+	}
+	else {
+		if (col[1]) {
+			if (ouch_ready) {
+				/*engine->play2D("resources/sounds/ouch.mp3");*/
+				ouch_ready = false;
+			}
+			//if x step would not be in object bounds, move only on x axis
+			player_position.x = x;
+		}
+		if (col[2]) {
+			if (ouch_ready) {
+				/*engine->play2D("resources/sounds/ouch.mp3");*/
+				ouch_ready = false;
+			}
+			//if z step would not be in object bounds, move only on z axis
+			player_position.z = z;
+		}
+	}
+	if (step_delay == 0 && ouch_ready) { /*engine->play2D("resources/sounds/step1.mp3");*/ }
+	if (step_delay == 8 && ouch_ready) { /*engine->play2D("resources/sounds/step2.mp3");*/ }
+	if (step_delay++ == 16) { step_delay = 0; }
+	return player_position;
+}
+
+std::array<bool, 3> check_objects_collisions(float x, float z) {
+	std::array<bool, 3> col = { true, true, true };
+	for (coords c : objects_coords) {
+		//if x is in object bounds and z is in object bounds
+		if (x > c.min_x && x < c.max_x && z > c.min_z && z < c.max_z) {
+			col[0] = false;
+			//if x step would be in object bounds
+			if (player_position.x < c.min_x || player_position.x > c.max_x) {
+				col[1] = false;
+			}
+			//if z step would be in object bounds
+			if (player_position.z < c.min_z || player_position.z > c.max_z) {
+				col[2] = false;
+			}
+			break;
+		}
+	}
+	return col;
+}
+
+void init_object_coords() {
+	//get min and max coords for objects (used in collision logic)
+	for (int i = 0; i < n_col_obj; i++) {
+		objects_coords[i].min_x = 999;
+		objects_coords[i].max_x = -999;
+		objects_coords[i].min_z = 999;
+		objects_coords[i].max_z = -999;
+		for (vertex v : col_obj[i]) {
+			if (v.position[0] * 2 < objects_coords[i].min_x) {
+				objects_coords[i].min_x = v.position[0] * 2;
+			}
+			if (v.position[0] * 2 > objects_coords[i].max_x) {
+				objects_coords[i].max_x = v.position[0] * 2;
+			}
+			if (v.position[2] * 2 < objects_coords[i].min_z) {
+				objects_coords[i].min_z = v.position[2] * 2;
+			}
+			if (v.position[2] * 2 > objects_coords[i].max_z) {
+				objects_coords[i].max_z = v.position[2] * 2;
+			}
+		}
+	}
+}
+
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
+		std::cout << "MOUSE_RIGHT" << '\n';
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+		std::cout << "MOUSE_LEFT" << '\n';
+	if (button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_PRESS)
+		std::cout << "MOUSE_MIDDLE" << '\n';
+}
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+	std::cout << "mouse wheel(" << xoffset << ", " << yoffset << ")";
+	globals.fov += 10 * -yoffset;
+	if (globals.fov > 170.0f) {
+		globals.fov = 170.0f;
+	}
+	if (globals.fov < 20.0f) {
+		globals.fov = 20.0f;
+	}
+}
+
+void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
+{
+	//processMouseMovement(lastxpos-xpos, lastypos-ypos);
+	std::cout << "cursor(" << xpos << ", " << ypos << ") ";
+
+	Yaw += (xpos - lastxpos) / 5;
+	Pitch += (lastypos - ypos) / 5;
+	std::cout << "yp(" << Yaw << ", " << Pitch << ") ";
+
+	if (true)
+	{
+		if (Pitch > 89.0f)
+			Pitch = 89.0f;
+		if (Pitch < -89.0f)
+			Pitch = -89.0f;
+	}
+
+	looking_position.x = cos(glm::radians(Yaw)) * cos(glm::radians(Pitch));
+	looking_position.y = sin(glm::radians(Pitch));
+	looking_position.z = sin(glm::radians(Yaw)) * cos(glm::radians(Pitch));
+
+	lastxpos = xpos;
+	lastypos = ypos;
+}
+
+static void finalize(int code)
+{
+	// ...
+
+	// Close OpenGL window if opened and terminate GLFW  
+	if (globals.window)
+		glfwDestroyWindow(globals.window);
+	glfwTerminate();
+
+	exit(code);
+	// ...
+}
+
+static void init_glfw(void)
+{
+	//
+	// GLFW init.
+	//
+
+	// set error callback first
+	glfwSetErrorCallback(error_callback);
+
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_POLYGON_SMOOTH);
+	glEnable(GL_LINE_SMOOTH);
+
+	// assume ALL objects are non-transparent 
+	glEnable(GL_CULL_FACE);
+
+
+	//initialize GLFW library
+	int glfw_ret = glfwInit();
+	if (!glfw_ret)
+	{
+		std::cerr << "GLFW init failed." << std::endl;
+		finalize(EXIT_FAILURE);
+	}
+
+	// Shader based, modern OpenGL (3.3 and higher)
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // only new functions
+	//glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE); // only old functions (for old tutorials etc.)
+
+	glfwWindowHint(GLFW_SAMPLES, 4); // 4x antialiasing
+	globals.window = glfwCreateWindow(800, 600, "OpenGL context", NULL, NULL);
+	if (!globals.window)
+	{
+		std::cerr << "GLFW window creation error." << std::endl;
+		finalize(EXIT_FAILURE);
+	}
+
+	// Get some GLFW info.
+	{
+		int major, minor, revision;
+
+		glfwGetVersion(&major, &minor, &revision);
+		std::cout << "Running GLFW " << major << '.' << minor << '.' << revision << std::endl;
+		std::cout << "Compiled against GLFW " << GLFW_VERSION_MAJOR << '.' << GLFW_VERSION_MINOR << '.' << GLFW_VERSION_REVISION << std::endl;
+	}
+
+	glfwMakeContextCurrent(globals.window);                                        // Set current window.
+	glfwGetFramebufferSize(globals.window, &globals.width, &globals.height);    // Get window size.
+	//glfwSwapInterval(0);                                                        // Set V-Sync OFF.
+	glfwSwapInterval(1);                                                        // Set V-Sync ON.
+
+
+	globals.app_start_time = glfwGetTime();                                        // Get start time.
+}
+
+void init_glew(void) {
+	//
+	// Initialize all valid GL extensions with GLEW.
+	// Usable AFTER creating GL context!
+	//
+	{
+		GLenum glew_ret;
+		glew_ret = glewInit();
+		if (glew_ret != GLEW_OK)
+		{
+			std::cerr << "WGLEW failed with error: " << glewGetErrorString(glew_ret) << std::endl;
+			exit(EXIT_FAILURE);
+		}
+		else
+		{
+			std::cout << "GLEW successfully initialized to version: " << glewGetString(GLEW_VERSION) << std::endl;
+		}
+		// Platform specific. (Change to GLXEW or ELGEW if necessary.)
+		glew_ret = wglewInit();
+		if (glew_ret != GLEW_OK)
+		{
+			std::cerr << "WGLEW failed with error: " << glewGetErrorString(glew_ret) << std::endl;
+			exit(EXIT_FAILURE);
+		}
+		else
+		{
+			std::cout << "WGLEW successfully initialized platform specific functions." << std::endl;
+		}
+	}
+}
+
 void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
 {
 	auto const src_str = [source]() {
@@ -121,24 +651,24 @@ void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum se
 		", ID = '" << id << '\'' <<
 		", message = '" << message << '\'' << std::endl;
 }
-//=== Templated ===
+
 std::string textFileRead(const std::string fn) {
 	std::ifstream file;
 	file.exceptions(std::ifstream::badbit);
 	std::stringstream ss;
-	try {
-		file.open(fn);
+
+	file.open(fn);
+	if (file.is_open()) {
 		std::string content;
 		ss << file.rdbuf();
 	}
-	catch (const std::ifstream::failure& e) {
-		std::cerr << "Error opening file: " << fn <<
-			std::endl;
+	else {
+		std::cerr << "Error opening file: " << fn << std::endl;
 		exit(EXIT_FAILURE);
 	}
 	return std::move(ss.str());
 }
-//=== Templated: Vypisuje informace o shaderu ===
+
 std::string getShaderInfoLog(const GLuint obj) {
 	int infologLength = 0;
 	std::string s;
@@ -151,7 +681,7 @@ std::string getShaderInfoLog(const GLuint obj) {
 	}
 	return s;
 }
-//=== Templated: Vypisuje informace o programu ===
+
 std::string getProgramInfoLog(const GLuint obj) {
 	int infologLength = 0;
 	std::string s;
@@ -164,667 +694,22 @@ std::string getProgramInfoLog(const GLuint obj) {
 	}
 	return s;
 }
-//=== Templated: Uzavření a ukončení okna ===
-static void finalize(int code)
-{
-	// ...
 
-	// Close OpenGL window if opened and terminate GLFW  
-	if (globals.window)
-		glfwDestroyWindow(globals.window);
-	glfwTerminate();
-
-	// ...
-}
-//=== Templated: Zachytávání chyb ===
-void error_callback(int error, const char* description)
-{
-	std::cerr << "Error: " << description << std::endl;
-}
-//=== Templated: Inicializace GL extensions GLEW, použitelné PO vytvoření GL contextu ===
-void init_glew(void)
-{
-	//
-	// Initialize all valid GL extensions with GLEW.
-	// Usable AFTER creating GL context!
-	//
-	{
-		GLenum glew_ret;
-		glew_ret = glewInit();
-		if (glew_ret != GLEW_OK)
-		{
-			std::cerr << "WGLEW failed with error: " << glewGetErrorString(glew_ret) << std::endl;
-			exit(EXIT_FAILURE);
-		}
-		else
-		{
-			std::cout << "GLEW successfully initialized to version: " << glewGetString(GLEW_VERSION) << std::endl;
-		}
-		// Platform specific. (Change to GLXEW or ELGEW if necessary.)
-		glew_ret = wglewInit();
-		if (glew_ret != GLEW_OK)
-		{
-			std::cerr << "WGLEW failed with error: " << glewGetErrorString(glew_ret) << std::endl;
-			exit(EXIT_FAILURE);
-		}
-		else
-		{
-			std::cout << "WGLEW successfully initialized platform specific functions." << std::endl;
-		}
-	}
-	if (glfwExtensionSupported("GL_KHR_debug"))
-	{
-		glDebugMessageCallback(MessageCallback, 0);
-		glEnable(GL_DEBUG_OUTPUT);
-		std::cout << "GL_DEBUG enabled." << std::endl;
-	}
-}
-
-//=== Editable: Nastavení GLFW ===
-static void init_glfw(void)
-{
-	//
-	// GLFW init.
-	//
-
-	// set error callback first
-	glfwSetErrorCallback(error_callback);
-
-	//initialize GLFW library
-	int glfw_ret = glfwInit();
-	if (!glfw_ret)
-	{
-		std::cerr << "GLFW init failed." << std::endl;
-		finalize(EXIT_FAILURE);
-	}
-
-	// Shader based, modern OpenGL (3.3 and higher)
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // only new functions <= this is the core profile
-	//glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE); // only old functions (for old tutorials etc.)
-
-	glfwWindowHint(GLFW_SAMPLES, 4); // 4x antialiasing
-
-	// original resolution 800x800
-	globals.window = glfwCreateWindow(1000, 1000, "Final project by Broz&Jacik", NULL, NULL);
-	if (!globals.window)
-	{
-		std::cerr << "GLFW window creation error." << std::endl;
-		finalize(EXIT_FAILURE);
-	}
-
-
-	glfwSetInputMode(globals.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-	// Get some GLFW info.
-	{
-		int major, minor, revision;
-
-		glfwGetVersion(&major, &minor, &revision);
-		std::cout << "Running GLFW " << major << '.' << minor << '.' << revision << std::endl;
-		std::cout << "Compiled against GLFW " << GLFW_VERSION_MAJOR << '.' << GLFW_VERSION_MINOR << '.' << GLFW_VERSION_REVISION << std::endl;
-	}
-	glfwMakeContextCurrent(globals.window);                                        // Set current window.
-	glfwGetFramebufferSize(globals.window, &globals.width, &globals.height);       // Get window size.
-	//glfwSwapInterval(0);                                                         // Set V-Sync OFF.
-	glfwSwapInterval(1);                                                           // Set V-Sync ON.
-	globals.app_start_time = glfwGetTime();                                        // Get start time.
-
-}
-
-
-//===================================================== MOVEMENT =====================================================
-
-bool moveForward = false;
-bool moveBackward = false;
-bool moveLeft = false;
-bool moveRight = false;
-
-/* Editable: Key callback function
-* @brief Function is called when key is pressed
-* @param window Window that called the function
-* @param key Key that was pressed
-* @param scancode
-* @param action Action that was performed
-* @param mods
-*/
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
-{
-	if (key == GLFW_KEY_B && action == GLFW_PRESS)
-		color = { 0.0f, 0.0f, 1.0f, 0.0f };
-	if (key == GLFW_KEY_R && action == GLFW_PRESS)
-		color = { 1.0f, 0.0f, 0.0f, 0.0f };
-	if (key == GLFW_KEY_G && action == GLFW_PRESS)
-		color = { 0.0f, 1.0f, 0.0f, 0.0f };
-	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-		glfwSetWindowShouldClose(window, GLFW_TRUE);
-
-
-	if (key == GLFW_KEY_W && action == GLFW_PRESS)
-		moveForward = true;
-	if (key == GLFW_KEY_S && action == GLFW_PRESS)
-		moveBackward = true;
-	if (key == GLFW_KEY_A && action == GLFW_PRESS)
-		moveLeft = true;
-	if (key == GLFW_KEY_D && action == GLFW_PRESS) {
-		moveRight = true;
-	}
-
-	if (key == GLFW_KEY_W && action == GLFW_RELEASE)
-		moveForward = false;
-	if (key == GLFW_KEY_S && action == GLFW_RELEASE)
-		moveBackward = false;
-	if (key == GLFW_KEY_A && action == GLFW_RELEASE)
-		moveLeft = false;
-	if (key == GLFW_KEY_D && action == GLFW_RELEASE) {
-		moveRight = false;
-	}
-
-
-	if (key == GLFW_KEY_F && action == GLFW_PRESS)
-		if (globals.fullscreen) {
-			glfwSetWindowMonitor(window, nullptr, globals.x, globals.y, 800, 800, 0);
-			globals.fullscreen = false;
-		}
-		else {
-			glfwGetWindowSize(window, &globals.x, &globals.y);
-			GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-			const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-			glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
-			globals.fullscreen = true;
-		}
-
-}
-
-/* Editable: Mouse button callback function
-* @brief Function is called when mouse button is pressed
-* @param window Window that called the function
-* @param button Button that was pressed
-* @param action Action that was performed
-* @param mods
-*/
-void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
-{
-	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
-		std::cout << "MOUSE_RIGHT" << '\n';
-	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
-		std::cout << "MOUSE_LEFT" << '\n';
-}
-
-/* Editable: Scroll callback function
-* @brief Function is called when mouse wheel is scrolled
-* @param window Window that called the function
-* @param xoffset
-* @param yoffset
-*/
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
-{
-	std::cout << "x offset: " << xoffset << " , y offset: " << yoffset << '\n';
-}
-
-bool firstMouseMovement = true;
-float last_mousePosition_X = 0;
-float last_mousePosition_Y = 0;
-float mouseSensitivity = 0.03f;
-float yaw = 0;
-float pitch = 0;
-
-
-float clip(float n, float min, float max) {
-	return std::max(min, std::min(n, max));
-}
-
-/* Editable: Cursor position callback function
-* @brief Function is called when cursor is moved
-* @param window Window that called the function
-* @param xpos
-* @param ypos
-*/
-void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
-{
-	if (firstMouseMovement) {
-		firstMouseMovement = false;
-		last_mousePosition_X = xpos;
-		last_mousePosition_Y = ypos;
-	}
-
-	float mouseOffset_Y = ypos - last_mousePosition_Y; //reversed to prevent inverted mouse movement
-	float mouseOffset_X = last_mousePosition_X - xpos;
-	last_mousePosition_X = xpos;
-	last_mousePosition_Y = ypos;
-
-	yaw += mouseOffset_X * mouseSensitivity;
-	pitch += mouseOffset_Y * mouseSensitivity;
-	pitch = clip(pitch, -89, 89);
-
-	cameraFront.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-	cameraFront.y = sin(glm::radians(pitch));
-	cameraFront.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-	cameraFront = glm::normalize(cameraFront);
-	std::cout << "cameraFront: " << "x: " << cameraFront.x << " , y: " << cameraFront.y << "z: " << cameraFront.z << '\n';
-}
-
-//===================================================== END OF MOVEMENT =====================================================
-
-
-void GenerateChessPattern(std::vector<vertex>& vertices_chess, cvflann::lsh::Bucket& indices_chess);
-
-GLuint PrepareShaderProgram(std::string& vert_shader_path, std::string& frag_shader_path);
-
-void HandleCameraMovement();
-
-//===================================================== MAIN =====================================================
-int main()
-{
-
-	//run_2D_raster_processing(); //odkomentuj toto aby jsi spustil 2D raster tracker
-
-	init_glfw();
-	init_glew();
-
-	glfwSetCursorPosCallback(globals.window, cursor_position_callback);
-	glfwSetScrollCallback(globals.window, scroll_callback);
-	glfwSetMouseButtonCallback(globals.window, mouse_button_callback);
-	glfwSetKeyCallback(globals.window, key_callback);
-
-	// enable Z buffer test
-	glEnable(GL_DEPTH_TEST);
-	// ALL objects are non-transparent, cull back face of polygons 
-	glEnable(GL_CULL_FACE);
-
-	//zapnutí Vsync
-	//glfwSwapInterval(1);
-
-	// create shaders
-	std::cout << "BASIC SHADER" << '\n';
-	make_shader("resources/basic.vert", "resources/basic.frag", &prog_h);
-	glUseProgram(prog_h);
-
-	std::cout << "TEXTURE SHADER" << '\n';
-	make_shader("resources/texture.vert", "resources/texture.frag", &prog_tex);
-
-	// === Načítání shaderů ===
-	std::string vert_shader_path = "resources/basic.vert";
-	std::string frag_shader_path = "resources/basic.frag";
-	GLuint prog_h = PrepareShaderProgram(vert_shader_path, frag_shader_path);
-
-	std::string vert_shader_path_fan = "resources/basicFan.vert";
-	std::string frag_shader_path_fan = "resources/basicFan.frag";
-	GLuint prog_h2 = PrepareShaderProgram(vert_shader_path_fan, frag_shader_path_fan);
-
-	std::string vert_shader_path_chess = "resources/basicChess.vert";
-	std::string frag_shader_path_chess = "resources/basicChess.frag";
-	GLuint prog_h_chess = PrepareShaderProgram(vert_shader_path_chess, frag_shader_path_chess);
-
-	// frames and time
-	int frame_cnt = 0;
-	globals.last_fps = glfwGetTime();
-
-
-	// === Načítání objektů ===
-	std::vector<vertex> vertices_frog = {};
-	std::vector<GLuint> indices_frog = {};
-	glm::vec3 scale_frog = { 0.07,0.07,0.07 };
-	glm::vec3 colors_frog = { 0.3, 0.3, 0.3 };
-	glm::vec3 scales_frog = { 1, 1, 1 };
-	glm::vec3 coords_frog = { -10.5, -0.5, 10.5 };
-	//Načtení objektu ze souboru
-	loadOBJ("resources/obj/Frog/20436_Frog_v1 textured.obj", vertices_frog, indices_frog, colors_frog, scale_frog, coords_frog);
-	VAO_frog = PrepareVAO(vertices_frog, indices_frog);
-
-	texture_id[0] = gen_tex("resources/obj/Frog/20436_Frog_diff.jpg");
-
-	// set visible area
-	double last_frame = glfwGetTime();
-
-	/*
-	std::vector<vertex> vertices = {
-		{{-0.5f, -0.5f, 0.0f},{1.0f,0.0f,0.0f}}, //pozice + barva vrcholu
-		{{0.5f, -0.5f, 0.0f},{0.0f,1.0f,0.0f}},
-		{{0.0f, 0.5f, 0.0f},{0.0f,0.0f,1.0f}}
-	};
-
-	std::vector<GLuint> indices = {0, 1, 2};
-	GLuint VAO1 = PrepareVAO(vertices, indices);
-	*/
-
-	//==================KRUH==================
-	//vygenerujte data pro kolecko uprostred obrazovky (triangle fan) z 100 000 vertexu
-	/*
-	std::vector<vertex> vertices_kruh = {};
-	std::vector<GLuint> indices_kruh = {};
-
-	int vertexCount = 100000;
-	float angleStep = 2 * 3.14159265358979323846f / vertexCount;
-	float magnitude = 0.5f;
-	//generovani kruhu
-	for (int i = 0; i < vertexCount; i++) {
-		auto polar = std::polar(magnitude, angleStep * i);
-		vertex temp_ver = { {polar._Val[0], polar._Val[1], 0.0f} };
-		vertices_kruh.push_back(temp_ver);
-		indices_kruh.push_back(i + 1);
-	}
-	vertices_kruh.push_back({ {0.0f, 0.0f, 0.0f} });
-	indices_kruh.push_back(0);
-
-
-	GLuint VAO_kruh = PrepareVAO(vertices_kruh, indices_kruh);
-	*/
-
-	//==================SACHOVNICE==================
-
-	//vygenerujte data pro kolecko uprostred obrazovky (triangle fan) z 100 000 vertexu
-	/*
-	std::vector<vertex> vertices_chess = {};
-	std::vector<GLuint> indices_chess = {};
-	GenerateChessPattern(vertices_chess, indices_chess);
-	GLuint VAO_chess = PrepareVAO(vertices_chess, indices_chess);
-	*/
-
-
-	//======================LOADED=MODEL=======================
-	/*
-	std::vector<vertex> vertices_subaru = {};
-	std::vector<GLuint> indices_subaru = {};
-	glm::vec3 scale = { 0.07,0.07,0.07 };
-	loadOBJ("resources/obj/Frog/20436_Frog_v1 textured.obj", vertices_subaru, indices_subaru, scale);
-	GLuint VAO_subaru = PrepareVAO(vertices_subaru, indices_subaru);
-	std::string vert_shader_path_subaru = "resources/basic.vert";
-	std::string frag_shader_path_subaru = "resources/basic.frag";
-	GLuint prog_subaru = PrepareShaderProgram(vert_shader_path_subaru, frag_shader_path_subaru);
-	*/
-
-
-	//====================================
-
-	//projection & viewport
-	int width, height;
-	glfwGetWindowSize(glfwGetCurrentContext(), &width, &height);
-
-	//scaling ratio
-	float ratio = static_cast<float>(width) / height;
-
-	//set visible area
-	glViewport(0, 0, width, height);
-
-	last_frame = glfwGetTime();
-
-	while (!glfwWindowShouldClose(globals.window)) {
-
-		glm::mat4 projectionMatrix = glm::perspective(
-			glm::radians(globals.fov), // The vertical Field of View, in radians: the amount of "zoom". Think "camera lens". Usually between 90° (extra wide) and 30° (quite zoomed in)
-			ratio,			           // Aspect Ratio. Depends on the size of your window.
-			0.1f,                      // Near clipping plane. Keep as big as possible, or you'll get precision issues.
-			//0.01f,                   // Near clipping plane. Keep as big as possible, or you'll get precision issues.
-			20000.0f                   // Far clipping plane. Keep as little as possible.
-			//100.0f                   // Far clipping plane. Keep as little as possible.
-		);
-
-		//set uniform for shaders - projection matrix
-		glUniformMatrix4fv(glGetUniformLocation(prog_h, "uProj_M"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
-
-		// set light color for shader
-		glUniform4f(glGetUniformLocation(prog_h, "lightColor"), 1.0f, 1.0f, 1.0f, 1.0f);
-
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		{
-			glUseProgram(prog_h);
-
-			// Model Matrix
-			glm::mat4 m_m = glm::identity<glm::mat4>();
-
-			// modify Model matrix and send to shaders
-			m_m = glm::scale(m_m, glm::vec3(2.0f));
-
-			// předání do shaderu
-			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
-
-			// View Matrix
-			glm::mat4 view_m = glm::lookAt(
-				cameraPosition,               //from where
-				cameraPosition + cameraFront, //to where
-				cameraUP                      //UP direction
-			);
-
-			// set light pos in above player for shaders
-			glUniform3f(glGetUniformLocation(prog_h, "lightPos"), cameraPosition.x / 2, cameraPosition.y / 2 + 1.0f, cameraPosition.z / 2);
-
-			// set camera pos for shaders
-			glUniform3f(glGetUniformLocation(prog_h, "camPos"), cameraPosition.x, cameraPosition.y, cameraPosition.z);
-
-			// předání do shaderu
-			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uView_m"), 1, GL_FALSE, glm::value_ptr(view_m));
-
-			glBindVertexArray(VAO_frog);
-			glDrawElements(GL_TRIANGLES, indices_frog.size(), GL_UNSIGNED_INT, 0);
-
-			// Use buffers
-			/*
-			for (int i = 1; i < n_objects - 6; i++) {
-				glBindVertexArray(VAO[i]);
-				glDrawElements(GL_TRIANGLES, indices_array[i].size(), GL_UNSIGNED_INT, 0);
-			}
-			*/
-
-			// textured object draw
-			draw_textured(m_m, view_m, projectionMatrix);
-
-		}
-
-		// FPS counter
-		float current_frame = glfwGetTime();
-		delta_t = current_frame - last_frame;
-		last_frame = current_frame;
-
-
-
-		//===Movement================
-
-		HandleCameraMovement();
-
-		//std::cout << "Player position "<< "x: " << cameraPosition.x<< ", y: " << cameraPosition.y << ", z: " << cameraPosition.z << '\n';
-		//subaru car
-		/*
-		{
-			glUseProgram(prog_subaru);
-			glBindVertexArray(VAO_subaru);
-
-			// Model Matrix
-			glm::mat4 m_m = glm::identity<glm::mat4>();
-			//m_m = glm::translate(m_m, glm::vec3(width / 2, height / 2, 0.0));
-			//m_m = glm::scale(m_m, glm::vec3(500.0f));
-			//m_m = glm::rotate(m_m, glm::radians(50.0f * (float)glfwGetTime()), glm::vec3(0.0f, 0.5f, 0.0f));
-			glUniformMatrix4fv(glGetUniformLocation(prog_subaru, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
-			glUniformMatrix4fv(glGetUniformLocation(prog_subaru, "uV_m"), 1, GL_FALSE, glm::value_ptr(view_m));
-			glUniformMatrix4fv(glGetUniformLocation(prog_subaru, "uProj_M"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
-			// =====================================================================================================
-			glDrawElements(GL_TRIANGLES, indices_subaru.size(), GL_UNSIGNED_INT, 0);
-		}
-		*/
-		//podlaha
-		/*
-		{
-			glUseProgram(prog_h_chess);
-			glBindVertexArray(VAO_chess);
-
-			// Model Matrix
-			glm::mat4 m_m = glm::identity<glm::mat4>();
-			//m_m = glm::translate(m_m, glm::vec3(width / 2, height / 2, 0.0));
-			//m_m = glm::scale(m_m, glm::vec3(500.0f));
-			//m_m = glm::rotate(m_m, glm::radians(50.0f * (float)glfwGetTime()), glm::vec3(0.3f, 0.1f, 0.5f));
-			glUniformMatrix4fv(glGetUniformLocation(prog_h_chess, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
-			glUniformMatrix4fv(glGetUniformLocation(prog_h_chess, "uV_m"), 1, GL_FALSE, glm::value_ptr(view_m));
-			glUniformMatrix4fv(glGetUniformLocation(prog_h_chess, "uProj_M"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
-			// =====================================================================================================
-			glDrawElements(GL_TRIANGLES, indices_chess.size(), GL_UNSIGNED_INT, 0);
-		}
-		*/
-		//trojuhelnik
-		/*
-		{
-			glUseProgram(prog_h);
-			glBindVertexArray(VAO1);
-
-			// Model Matrix
-			glm::mat4 m_m = glm::identity<glm::mat4>();
-			//m_m = glm::translate(m_m, glm::vec3(width / 2, height / 2, 0.0));
-			//m_m = glm::scale(m_m, glm::vec3(500.0f));
-			m_m = glm::rotate(m_m, glm::radians(50.0f * (float)glfwGetTime()), glm::vec3(0.3f, 0.1f, 0.5f));
-			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
-			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uV_m"), 1, GL_FALSE, glm::value_ptr(view_m));
-			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uProj_M"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
-			// =====================================================================================================
-			glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
-		}*/
-		//kruh
-		/*
-		{
-			glUseProgram(prog_h2); // nutne upravit, uz nemame barvu => nový shared
-
-			GLuint loc = glGetUniformLocation(prog_h2, "color");
-			glUniform4fv(loc, 1, glm::value_ptr(color));
-
-
-
-			glBindVertexArray(VAO_kruh);
-			glDrawElements(GL_TRIANGLE_FAN, indices_kruh.size(), GL_UNSIGNED_INT, 0);
-		}
-
-		{
-			glUseProgram(prog_h_chess);
-			glBindVertexArray(VAO_chess);
-
-			// Model Matrix
-			glm::mat4 m_m = glm::identity<glm::mat4>();
-			//m_m = glm::translate(m_m, glm::vec3(width / 2, height / 2, 0.0));
-			//m_m = glm::scale(m_m, glm::vec3(5.0f));
-			m_m = glm::rotate(m_m, glm::radians(100.0f * (float)glfwGetTime()), glm::vec3(0.0f, 0.1f, 0.0f));
-			glUniformMatrix4fv(glGetUniformLocation(prog_h_chess, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
-			glUniformMatrix4fv(glGetUniformLocation(prog_h_chess, "uV_m"), 1, GL_FALSE, glm::value_ptr(v_m));
-			glUniformMatrix4fv(glGetUniformLocation(prog_h_chess, "uProj_M"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
-			// =====================================================================================================
-			glDrawElements(GL_TRIANGLES, indices_chess.size(), GL_UNSIGNED_INT, 0);
-		}*/
-
-		//Prohodit buffery k vykreslení, zaznamenat eventy
-		glfwSwapBuffers(globals.window); // prohodit buffery
-		glfwPollEvents();				 // zaznamenat eventy	
-
-		// frames a time
-		frame_cnt++;
-		double now = glfwGetTime();
-
-		// vyps�n� fps
-		if ((now - globals.last_fps) > 1) {
-			globals.last_fps = now;
-			std::cout << "FPS: " << frame_cnt << std::endl;
-			frame_cnt = 0;
-		}
-	}
-	std::cout << "Program ended." << '\n';
-}
-
-void HandleCameraMovement()
-{
-	float cameraSpeed = 2.5f * delta_t;
-	//std::cout << "Delta = " << delta_t<< "\n";
-	if (moveForward) cameraPosition += cameraSpeed * cameraFront;
-	if (moveBackward)cameraPosition -= cameraSpeed * cameraFront;
-	if (moveRight) {
-		glm::vec3 cameraRight = glm::normalize(glm::cross(cameraFront, cameraUP));
-		cameraPosition += cameraRight * cameraSpeed;
-	}
-	if (moveLeft) {
-		glm::vec3 cameraRight = glm::normalize(glm::cross(cameraFront, cameraUP));
-		cameraPosition -= cameraRight * cameraSpeed;
-	}
-}
-
-
-//===================================================== END OF MAIN =====================================================
-
-void make_shader(std::string vertex_shader, std::string fragment_shader, GLuint* shader) {
-	GLuint VS_h, FS_h, prog_h;
-	VS_h = glCreateShader(GL_VERTEX_SHADER);
-	FS_h = glCreateShader(GL_FRAGMENT_SHADER);
-
-	// vert
-	std::string VSsrc = textFileRead(vertex_shader);
-	const char* VS_string = VSsrc.c_str();
-	// frag
-	std::string FSsrc = textFileRead(fragment_shader);
-	const char* FS_string = FSsrc.c_str();
-	glShaderSource(VS_h, 1, &VS_string, NULL);
-	glShaderSource(FS_h, 1, &FS_string, NULL);
-
-	// compile and use shaders
-	glCompileShader(VS_h);
-	getShaderInfoLog(VS_h);
-	glCompileShader(FS_h);
-	getShaderInfoLog(FS_h);
-	prog_h = glCreateProgram();
-	glAttachShader(prog_h, VS_h);
-	glAttachShader(prog_h, FS_h);
-	glLinkProgram(prog_h);
-	getProgramInfoLog(prog_h);
-	*shader = prog_h;
-
-	// check if vertex shader, fragment shader compiled successfuly and program linked
-	GLint success = 0;
-	std::cout << "Success false = " << GL_FALSE << std::endl;
-	glGetShaderiv(VS_h, GL_COMPILE_STATUS, &success);
-	std::cout << "Vertex shader " << success << std::endl;
-	glGetShaderiv(FS_h, GL_COMPILE_STATUS, &success);
-	std::cout << "Fragment shader " << success << std::endl;
-	glGetProgramiv(prog_h, GL_LINK_STATUS, &success);
-	std::cout << "Program linking " << success << std::endl;
-}
-
-GLuint PrepareShaderProgram(std::string& vert_shader_path, std::string& frag_shader_path)
-{
-	//(FS = fragment shader, VS = vertex shader)
-	GLuint prog_h;
-	GLuint VS_h = glCreateShader(GL_VERTEX_SHADER);
-	GLuint FS_h = glCreateShader(GL_FRAGMENT_SHADER);
-
-	std::string VSsrc = textFileRead(vert_shader_path);
-	const char* VS_string = VSsrc.c_str();
-	std::string FSsrc = textFileRead(frag_shader_path);
-	const char* FS_string = FSsrc.c_str();
-	glShaderSource(VS_h, 1, &VS_string, NULL);
-	glShaderSource(FS_h, 1, &FS_string, NULL);
-	glCompileShader(VS_h);
-	getShaderInfoLog(VS_h);
-	glCompileShader(FS_h);
-	getShaderInfoLog(FS_h);
-	prog_h = glCreateProgram();
-	glAttachShader(prog_h, VS_h);
-	glAttachShader(prog_h, FS_h);
-	glLinkProgram(prog_h);
-	getProgramInfoLog(prog_h);
-	glUseProgram(prog_h);
-	return prog_h;
-}
-
-GLuint PrepareVAO(std::vector<vertex> vertices, std::vector<GLuint> indices) {
-	GLuint resultVAO = glCreateShader(GL_VERTEX_SHADER); //fust something to stop compile errors
-	GLuint VBO, EBO;
-	//GL names for Array and Buffers Objects
+void va_setup(int index) {
 	// Generate the VAO and VBO
-	glGenVertexArrays(1, &resultVAO);
-	glGenBuffers(1, &VBO);
-	glGenBuffers(1, &EBO);
+	glGenVertexArrays(1, &VAO[index]);
+	glGenBuffers(1, &VBO[index]);
+	glGenBuffers(1, &EBO[index]);
 	// Bind VAO (set as the current)
-	glBindVertexArray(resultVAO);
+	glBindVertexArray(VAO[index]);
 	// Bind the VBO, set type as GL_ARRAY_BUFFER
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBindBuffer(GL_ARRAY_BUFFER, VBO[index]);
 	// Fill-in data into the VBO
-	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(vertex), vertices.data(), GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, vertex_array[index].size() * sizeof(vertex), vertex_array[index].data(), GL_DYNAMIC_DRAW);
 	// Bind EBO, set type GL_ELEMENT_ARRAY_BUFFER
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO[index]);
 	// Fill-in data into the EBO
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_array[index].size() * sizeof(GLuint), indices_array[index].data(), GL_DYNAMIC_DRAW);
 	// Set Vertex Attribute to explain OpenGL how to interpret the VBO
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(0 + offsetof(vertex, position)));
 	// Enable the Vertex Attribute 0 = position
@@ -832,12 +717,233 @@ GLuint PrepareVAO(std::vector<vertex> vertices, std::vector<GLuint> indices) {
 	// Set end enable Vertex Attribute 1 = Texture Coordinates
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(0 + offsetof(vertex, color)));
 	glEnableVertexAttribArray(1);
+
+	// TEST
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(0 + offsetof(vertex, normal)));
+	glEnableVertexAttribArray(2);
+
 	// Bind VBO and VAO to 0 to prevent unintended modification
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+}
 
-	return resultVAO;
+bool loadOBJ(const char* path, std::vector <vertex>& out_vertices, std::vector <GLuint>& indices, glm::vec3 color, glm::vec3 scale, glm::vec3 coords) {
+	std::vector< unsigned int > vertexIndices, uvIndices, normalIndices;
+	std::vector< glm::vec3 > temp_vertices;
+	std::vector< glm::vec2 > temp_uvs;
+	std::vector< glm::vec3 > temp_normals;
+
+	out_vertices.clear();
+	indices.clear();
+
+	FILE* file;
+	fopen_s(&file, path, "r");
+	if (file == NULL) {
+		printf("Impossible to open the file !\n");
+		return false;
+	}
+	int index = 0;
+	while (1) {
+
+		char lineHeader[128];
+		int res = fscanf_s(file, "%s", lineHeader, array_cnt(lineHeader));
+		if (res == EOF) {
+			break;
+		}
+
+		if (strcmp(lineHeader, "v") == 0) {
+			glm::vec3 vertex;
+			fscanf_s(file, "%f %f %f\n", &vertex.x, &vertex.y, &vertex.z);
+			temp_vertices.push_back(vertex);
+		}
+		else if (strcmp(lineHeader, "vt") == 0) {
+			glm::vec2 uv;
+			fscanf_s(file, "%f %f\n", &uv.y, &uv.x);
+			temp_uvs.push_back(uv);
+		}
+		else if (strcmp(lineHeader, "vn") == 0) {
+			glm::vec3 normal;
+			fscanf_s(file, "%f %f %f\n", &normal.x, &normal.y, &normal.z);
+			temp_normals.push_back(normal);
+		}
+		else if (strcmp(lineHeader, "f") == 0) {
+			std::string vertex1, vertex2, vertex3;
+			unsigned int vertexIndex[3], uvIndex[3], normalIndex[3];
+			int matches = fscanf_s(file, "%d/%d/%d %d/%d/%d %d/%d/%d\n", &vertexIndex[0], &uvIndex[0], &normalIndex[0], &vertexIndex[1], &uvIndex[1], &normalIndex[1], &vertexIndex[2], &uvIndex[2], &normalIndex[2]);
+			if (matches != 9) {
+				printf("File can't be read by simple parser :( Try exporting with other options\n");
+				return false;
+			}
+			vertexIndices.push_back(vertexIndex[0]);
+			vertexIndices.push_back(vertexIndex[1]);
+			vertexIndices.push_back(vertexIndex[2]);
+
+			normalIndices.push_back(normalIndex[0]);
+			normalIndices.push_back(normalIndex[1]);
+			normalIndices.push_back(normalIndex[2]);
+
+			for (int j = 0; j < 6; j++)
+			{
+				indices.push_back(index + j);
+			}
+			index += 6;
+		}
+	}
+
+	// unroll from indirect to direct vertex specification
+	// sometimes not necessary, definitely not optimal
+
+	for (unsigned int u = 0; u < vertexIndices.size(); u++) {
+		unsigned int vertexIndex = vertexIndices[u];
+		glm::vec3 vertex = coords + (temp_vertices[vertexIndex - 1] * scale);
+
+		unsigned int normalIndex = normalIndices[u];
+		glm::vec3 normal = temp_normals[normalIndex - 1];
+
+		out_vertices.push_back({ vertex, color, normal });
+	}
+
+	fclose(file);
+	return true;
+}
+
+void setup_objects() {
+	glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+	// textured 0
+	tex_vertices[0].push_back({ {-10.0f, -1.0f, -10.0f}, glm::vec2(-10.0f, -10.0f), up });
+	tex_vertices[0].push_back({ { -10.0f, -1.0f, 10.0f}, glm::vec2(-10.0f, 10.0f), up });
+	tex_vertices[0].push_back({ { 0.0f, -1.0f, 0.0f}, glm::vec2(0.0f, 0.0f), up });
+	indices_array[0] = { 0, 1, 2 };
+
+	tex_setup(0, 0);
+	// textured 1
+	tex_vertices[1].push_back({ { 10.0f, -1.0f, 10.0f }, glm::vec2(-10.0f, 10.0f), up });
+	tex_vertices[1].push_back({ { 10.0f, -1.0f, -10.0f}, glm::vec2(10.0f, 10.0f), up });
+	tex_vertices[1].push_back({ { 0.0f, -1.0f, 0.0f}, glm::vec2(0.0f, 0.0f), up });
+	indices_array[13] = { 0, 1, 2 };
+
+	tex_setup(13, 1);
+	// textured 2
+	tex_vertices[2].push_back({ { 10.0f, -1.0f, -10.0f }, glm::vec2(-10.0f, 10.0f), up });
+	tex_vertices[2].push_back({ { -10.0f, -1.0f, -10.0f}, glm::vec2(-10.0f, -10.0f), up });
+	tex_vertices[2].push_back({ { 0.0f, -1.0f, 0.0f}, glm::vec2(0.0f, 0.0f), up });
+	indices_array[14] = { 0, 1, 2 };
+
+	tex_setup(14, 2);
+	// textured 3
+	tex_vertices[3].push_back({ { -10.0f, -1.0f, 10.0f}, glm::vec2(-10.0f, 10.0f), up });
+	tex_vertices[3].push_back({ { 10.0f, -1.0f, 10.0f }, glm::vec2(10.0f, 10.0f), up });
+	tex_vertices[3].push_back({ { 0.0f, -1.0f, 0.0f}, glm::vec2(0.0f, 0.0f), up });
+	indices_array[15] = { 0, 1, 2 };
+
+	tex_setup(15, 3);
+
+	//setup color, scale and coordinates for object
+	colors[1] = { 0.3, 0.3, 0.3 };
+	scales[1] = { 1, 1, 1 };
+	coordinates[1] = { -10.5, -0.5, 10.5 };
+	//load object from file
+	loadOBJ("resources/obj/cube.obj", vertex_array[1], indices_array[1], colors[1], scales[1], coordinates[1]);
+	//setup vertex array
+	va_setup(1);
+
+	colors[2] = { 0.3, 0.3, 0.3 };
+	scales[2] = { 1, 1, 1 };
+	coordinates[2] = { 10.5, -0.5, -10.5 };
+	loadOBJ("resources/obj/cube.obj", vertex_array[2], indices_array[2], colors[2], scales[2], coordinates[2]);
+
+	va_setup(2);
+
+
+	colors[3] = { 0.3, 0.3, 0.3 };
+	scales[3] = { 1, 1, 20 };
+	coordinates[3] = { -10.5, -0.5, 0 };
+	loadOBJ("resources/obj/cube.obj", vertex_array[3], indices_array[3], colors[3], scales[3], coordinates[3]);
+
+	va_setup(3);
+
+	colors[4] = { 0.3, 0.3, 0.3 };
+	scales[4] = { 1, 1, 20 };
+	coordinates[4] = { 10.5, -0.5, 0 };
+	loadOBJ("resources/obj/cube.obj", vertex_array[4], indices_array[4], colors[4], scales[4], coordinates[4]);
+
+	va_setup(4);
+
+	colors[5] = { 0.3, 0.3, 0.3 };
+	scales[5] = { 20, 1, 1 };
+	coordinates[5] = { 0, -0.5, -10.5 };
+	loadOBJ("resources/obj/cube.obj", vertex_array[5], indices_array[5], colors[5], scales[5], coordinates[5]);
+
+	va_setup(5);
+
+	colors[6] = { 0.3, 0.3, 0.3 };
+	scales[6] = { 20, 1, 1 };
+	coordinates[6] = { 0, -0.5, 10.5 };
+	loadOBJ("resources/obj/cube.obj", vertex_array[6], indices_array[6], colors[6], scales[6], coordinates[6]);
+
+	va_setup(6);
+
+	colors[7] = { 0.3, 0.3, 0.3 };
+	scales[7] = { 1, 1, 1 };
+	coordinates[7] = { 10.5, -0.5, 10.5 };
+	loadOBJ("resources/obj/cube.obj", vertex_array[7], indices_array[7], colors[7], scales[7], coordinates[7]);
+
+	va_setup(7);
+
+	colors[8] = { 0.3, 0.3, 0.3 };
+	scales[8] = { 1, 1, 1 };
+	coordinates[8] = { -10.5, -0.5, -10.5 };
+	loadOBJ("resources/obj/cube.obj", vertex_array[8], indices_array[8], colors[8], scales[8], coordinates[8]);
+
+	va_setup(8);
+
+	colors[9] = { 0.7, 0.7, 0.0 };
+	scales[9] = { 2, 1, 2 };
+	coordinates[9] = { 0, -0.5, 0 };
+
+	loadOBJ("resources/obj/cube.obj", vertex_array[9], indices_array[9], colors[9], scales[9], coordinates[9]);
+
+	va_setup(9);
+
+	colors[10] = { 1, 1, 1 };
+	scales[10] = { 2, 2, 2 };
+	coordinates[10] = { -20, 15, -20 };
+	loadOBJ("resources/obj/sphere.obj", vertex_array[10], indices_array[10], colors[10], scales[10], coordinates[10]);
+
+	va_setup(10);
+
+	colors[11] = { 1, 0.1, 0.1 };
+	scales[11] = { 0.1, 0.1, 0.1 };
+	coordinates[11] = { 7, 3, 7 };
+
+	loadOBJ("resources/obj/teapot.obj", vertex_array[11], indices_array[11], colors[11], scales[11], coordinates[11]);
+
+	va_setup(11);
+
+	colors[11] = { 1, 0.1, 0.1 };
+	scales[11] = { 0.1, 0.1, 0.1 };
+	coordinates[11] = { 7, 3, 7 };
+
+	loadOBJ("resources/obj/teapot.obj", vertex_array[11], indices_array[11], colors[11], scales[11], coordinates[11]);
+
+	va_setup(11);
+
+	colors[12] = { 0.1, 0.1, 1.0 };
+	scales[12] = { 0.1, 0.1, 0.1 };
+	coordinates[12] = { -10.5, 0.0, -10.5 };
+
+	loadOBJ("resources/obj/teapot.obj", vertex_array[12], indices_array[12], colors[12], scales[12], coordinates[12]);
+
+	va_setup(12);
+
+	//choose objects with collisions
+	int j = 0;
+	for (int i : {1, 2, 3, 4, 5, 6, 7, 8, 9}) {
+		col_obj[j] = vertex_array[i];
+		j++;
+	}
+	init_object_coords();
 }
 
 GLuint gen_tex(std::string filepath)
@@ -885,18 +991,85 @@ GLuint gen_tex(std::string filepath)
 	return ID;
 }
 
+void tex_setup(int index, int tex) {
+	// Generate the VAO and VBO
+	glGenVertexArrays(1, &VAO[index]);
+	glGenBuffers(1, &VBO[index]);
+	glGenBuffers(1, &EBO[index]);
+	// Bind VAO (set as the current)
+	glBindVertexArray(VAO[index]);
+	// Bind the VBO, set type as GL_ARRAY_BUFFER
+	glBindBuffer(GL_ARRAY_BUFFER, VBO[index]);
+	// Fill-in data into the VBO
+	glBufferData(GL_ARRAY_BUFFER, tex_vertices[tex].size() * sizeof(tex_vertex), tex_vertices[tex].data(), GL_DYNAMIC_DRAW);
+	// Bind EBO, set type GL_ELEMENT_ARRAY_BUFFER
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO[index]);
+	// Fill-in data into the EBO
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_array[0].size() * sizeof(GLuint), indices_array[0].data(), GL_DYNAMIC_DRAW);
+	// Set Vertex Attribute to explain OpenGL how to interpret the VBO
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(tex_vertex), (void*)(0 + offsetof(tex_vertex, position)));
+	// Enable the Vertex Attribute 0 = position
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(tex_vertex), (void*)(0 + offsetof(tex_vertex, texcoord)));
+	glEnableVertexAttribArray(1);
+	// TEST
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(tex_vertex), (void*)(0 + offsetof(tex_vertex, normal)));
+	glEnableVertexAttribArray(2);
+	// Bind VBO and VAO to 0 to prevent unintended modification
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+}
+
+void make_shader(std::string vertex_shader, std::string fragment_shader, GLuint* shader) {
+	GLuint VS_h, FS_h, prog_h;
+	VS_h = glCreateShader(GL_VERTEX_SHADER);
+	FS_h = glCreateShader(GL_FRAGMENT_SHADER);
+
+	// vert
+	std::string VSsrc = textFileRead(vertex_shader);
+	const char* VS_string = VSsrc.c_str();
+	// frag
+	std::string FSsrc = textFileRead(fragment_shader);
+	const char* FS_string = FSsrc.c_str();
+	glShaderSource(VS_h, 1, &VS_string, NULL);
+	glShaderSource(FS_h, 1, &FS_string, NULL);
+
+	// compile and use shaders
+	glCompileShader(VS_h);
+	getShaderInfoLog(VS_h);
+	glCompileShader(FS_h);
+	getShaderInfoLog(FS_h);
+	prog_h = glCreateProgram();
+	glAttachShader(prog_h, VS_h);
+	glAttachShader(prog_h, FS_h);
+	glLinkProgram(prog_h);
+	getProgramInfoLog(prog_h);
+	*shader = prog_h;
+
+	// check if vertex shader, fragment shader compiled successfuly and program linked
+	GLint success = 0;
+	std::cout << "Success false = " << GL_FALSE << std::endl;
+	glGetShaderiv(VS_h, GL_COMPILE_STATUS, &success);
+	std::cout << "Vertex shader " << success << std::endl;
+	glGetShaderiv(FS_h, GL_COMPILE_STATUS, &success);
+	std::cout << "Fragment shader " << success << std::endl;
+	glGetProgramiv(prog_h, GL_LINK_STATUS, &success);
+	std::cout << "Program linking " << success << std::endl;
+}
+
 void draw_textured(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix) {
 	glUseProgram(prog_tex);
 	glUniformMatrix4fv(glGetUniformLocation(prog_tex, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
-	glUniformMatrix4fv(glGetUniformLocation(prog_tex, "uView_m"), 1, GL_FALSE, glm::value_ptr(v_m));
-	glUniformMatrix4fv(glGetUniformLocation(prog_tex, "uProj_M"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+	glUniformMatrix4fv(glGetUniformLocation(prog_tex, "uV_m"), 1, GL_FALSE, glm::value_ptr(v_m));
+	glUniformMatrix4fv(glGetUniformLocation(prog_tex, "uP_m"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
 
 	// set light color for shader
 	glUniform4f(glGetUniformLocation(prog_tex, "lightColor"), 1.0f, 0.5f, 0.5f, 1.0f);
 	// set light pos in above player for shaders
-	glUniform3f(glGetUniformLocation(prog_tex, "lightPos"), cameraPosition.x / 2, cameraPosition.y / 2 + 1.0f, cameraPosition.z / 2);
+	glUniform3f(glGetUniformLocation(prog_tex, "lightPos"), player_position.x / 2, player_position.y / 2 + 1.0f, player_position.z / 2);
 	// set camera pos for shaders
-	glUniform3f(glGetUniformLocation(prog_tex, "camPos"), cameraPosition.x, cameraPosition.y, cameraPosition.z);
+	glUniform3f(glGetUniformLocation(prog_tex, "camPos"), player_position.x, player_position.y, player_position.z);
 
 	//set texture unit
 	glActiveTexture(GL_TEXTURE0);
@@ -905,7 +1078,6 @@ void draw_textured(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix) {
 	glUniform1i(glGetUniformLocation(prog_tex, "tex0"), 0);
 
 	// draw object using VAO (Bind+DrawElements+Unbind)
-	/*
 	glBindVertexArray(VAO[0]);
 	glBindTexture(GL_TEXTURE_2D, texture_id[0]);
 	glDrawElements(GL_TRIANGLES, indices_array[0].size(), GL_UNSIGNED_INT, 0);
@@ -921,46 +1093,5 @@ void draw_textured(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix) {
 	glBindVertexArray(VAO[15]);
 	glBindTexture(GL_TEXTURE_2D, texture_id[3]);
 	glDrawElements(GL_TRIANGLES, indices_array[15].size(), GL_UNSIGNED_INT, 0);
-	*/
-	glBindVertexArray(VAO_frog);
-	glBindTexture(GL_TEXTURE_2D, texture_id[0]);
-
 	glUseProgram(prog_h);
-}
-
-void GenerateChessPattern(std::vector<vertex>& vertices_chess, cvflann::lsh::Bucket& indices_chess)
-{
-	int min_x = -1;
-	int max_x = 1;
-	int min_y = -1;
-	int max_y = 1;
-	int ver_count = 0;
-
-	float square_size = 0.1f;
-	glm::vec3 color_chess;
-	bool is_black = true;
-	//generovani sachovnice
-	for (float i = min_x; i < max_x; i += square_size) {
-		is_black = !is_black;
-		for (float j = min_y; j < max_y; j += square_size)
-		{
-			if (is_black) {
-				color_chess = { 1.0f, 0.0f, 0.0f };
-			}
-			else color_chess = { 1.0f, 1.0f, 1.0f };
-			is_black = !is_black;
-
-			vertices_chess.push_back({ { i              , j, 0 }, color_chess });
-			vertices_chess.push_back({ { i + square_size, j, 0 }, color_chess });
-			vertices_chess.push_back({ { i, j + square_size, 0 }, color_chess });
-
-			vertices_chess.push_back({ { i + square_size,j + square_size, 0 }, color_chess });
-			vertices_chess.push_back({ { i, j + square_size, 0 }, color_chess });
-			vertices_chess.push_back({ { i + square_size, j, 0 }, color_chess });
-
-			for (int ver = 0; ver < 6; ver++) {
-				indices_chess.push_back(ver_count++);
-			}
-		}
-	}
 }

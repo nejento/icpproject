@@ -203,6 +203,7 @@ bool loadOBJ(const char* path, std::vector <vertex>& out_vertices, std::vector <
 * @param coords - position of the model
 * @return true if successful, false otherwise
 */
+/*
 bool loadOBJ(const char* path, std::vector <vertex>& out_vertices, std::vector <GLuint>& indices, glm::vec3 color, glm::vec3 scale, glm::vec3 coords) {
 	std::vector< unsigned int > vertexIndices, uvIndices, normalIndices;
 	std::vector< glm::vec3 > temp_vertices;
@@ -282,3 +283,4 @@ bool loadOBJ(const char* path, std::vector <vertex>& out_vertices, std::vector <
 	fclose(file);
 	return true;
 }
+*/
