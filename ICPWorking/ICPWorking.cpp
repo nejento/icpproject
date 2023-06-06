@@ -1,6 +1,5 @@
 /* TODO
 * - Vzít movement ze starého projektu, fungoval imo lépe s voláním HandleCameraMovement
-* - Přepsat sout výstupy, aby vypadaly lépe
 */
 
 //=== Includes ===
@@ -52,25 +51,24 @@ std::string getProgramInfoLog(const GLuint obj);
 std::string getShaderInfoLog(const GLuint obj);
 std::string textFileRead(const std::string fn);
 
-GLuint gen_tex(std::string filepath);
-void make_shader(std::string vertex_shader, std::string fragment_shader, GLuint* shader);
-void draw_textured(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix);
-
 // create sound engine
 /*
 irrklang::ISoundEngine* engine = irrklang::createIrrKlangDevice();
 */
 
-void prepare_object();
+void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
+
+void setup_objects();
 GLuint PrepareVAO(int index);
+
+GLuint gen_tex(std::string filepath);
+void make_shader(std::string vertex_shader, std::string fragment_shader, GLuint* shader);
+void draw_textured(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix);
 
 glm::vec3 check_collision(float x, float z);
 std::array<bool, 3> check_objects_collisions(float x, float z);
 void init_object_coords();
 
-void setup_objects();
-
-void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
 
 
 // === Globals ===
@@ -456,7 +454,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		float z = player_position.z - looking_position.z * speed;
 		player_position = check_collision(x, z);
 	}
-	std::cout << "Player position: " << player_position.x << " " << player_position.y << " " << player_position.z << " ";
+	std::cout << "Player position: " << player_position.x << " " << player_position.y << " " << player_position.z << " " << std::endl;
 }
 
 /* Editable: Mouse callback function - Pouze zaznamenáváme kliknutí, nereflektujeme žádné změny, jen vypisujeme v logu
@@ -486,7 +484,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 */
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
-	std::cout << "mouse wheel(" << xoffset << ", " << yoffset << ")";
+	std::cout << "mouse wheel(" << xoffset << ", " << yoffset << ")" << '\n';
 	globals.fov += 10 * -yoffset;
 	if (globals.fov > 170.0f) {
 		globals.fov = 170.0f;
@@ -506,11 +504,11 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 {
 	//processMouseMovement(lastxpos-xpos, lastypos-ypos);
-	std::cout << "cursor(" << xpos << ", " << ypos << ") ";
+	std::cout << "cursor(" << xpos << ", " << ypos << ") " << '\n';
 
 	Yaw += (xpos - lastxpos) / 5;
 	Pitch += (lastypos - ypos) / 5;
-	std::cout << "yp(" << Yaw << ", " << Pitch << ") ";
+	std::cout << "yp(" << Yaw << ", " << Pitch << ") " << '\n';
 
 	if (true)
 	{
@@ -911,14 +909,14 @@ void setup_objects() {
 	index = 11;
 	assets[index].type = asset_type_color;
 	assets[index].color = { 1, 0.1, 0.1 };
-	assets[index].scale = { 0.1, 0.1, 0.1 };
+	assets[index].scale = { 1.1, 1.1, 1.1 };
 	assets[index].coord = { 7, 3, 7 };
-	loadOBJ("resources/obj/teapot.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+	loadOBJ("resources/obj/work_glove.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
 	PrepareVAO(11);
 
 	index = 12;
 	assets[index].type = asset_type_color;
-	assets[index].color = { 0.1, 0.1, 1.0 };
+	assets[index].color = { 0.1, 1.0, 0.1 };
 	assets[index].scale = { 0.1, 0.1, 0.1 };
 	assets[index].coord = { -10.5, 0.0, -10.5 };
 	loadOBJ("resources/obj/teapot.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
