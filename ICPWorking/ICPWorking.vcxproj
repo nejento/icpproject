@@ -159,6 +159,14 @@
     <None Include="resources\texture.frag" />
     <None Include="resources\texture.vert" />
   </ItemGroup>
+  <ItemGroup>
+    <Object Include="resources\obj\bunny_tri_vnt.obj" />
+    <Object Include="resources\obj\cube.obj" />
+    <Object Include="resources\obj\frog.obj" />
+    <Object Include="resources\obj\sphere.obj" />
+    <Object Include="resources\obj\teapot.obj" />
+    <Object Include="resources\obj\work_glove.obj" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
