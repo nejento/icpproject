@@ -1,12 +1,9 @@
 /* TODO
-* - Vytvořit prostředí
-* - Načítání objektů a textur
-* - Zajistit pohyb kamery
-* - Zajistit osvětlení
-* - Přidat zvuk
+* - Vzít movement ze starého projektu, fungoval imo lépe s voláním HandleCameraMovement
+* - Přepsat sout výstupy, aby vypadaly lépe
 */
 
-// === Includes ===
+//=== Includes ===
 // C++ 
 #include <iostream>
 #include <chrono>
@@ -94,6 +91,7 @@ void setup_objects();
 
 void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
 
+
 // === Globals ===
 typedef struct image_data {
 	cv::Point2f center;
@@ -138,6 +136,8 @@ int step_delay = 0;
 bool ouch_ready = true;
 int move_count = 0;
 
+
+//=== Objects storage ===
 // Object count (počet objektů)
 const int n_objects = 16;
 // VAO Storage
@@ -157,7 +157,7 @@ glm::vec3 scales[n_objects];
 // Object coordinates
 glm::vec3 coordinates[n_objects];
 
-// Cbjects with collisions
+// Objects with collisions
 struct coords {
 	float min_x;
 	float max_x;
@@ -169,6 +169,7 @@ std::vector<vertex> col_obj[n_col_obj];
 coords objects_coords[n_col_obj];
 
 GLuint prog_h, prog_tex;
+
 
 // === Templated ===
 void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
@@ -372,10 +373,144 @@ static void init_glfw(void)
 }
 
 
-// === Main === 
+//=== Movement ===
+/* Editable: Key callback function
+* @brief: Callback function for keyboard input
+* @param: window - window that received the event
+* @param: key - key that was pressed or released
+* @param: scancode - system-specific scancode of the key
+* @param: action - GLFW_PRESS, GLFW_RELEASE or GLFW_REPEAT
+* @param: mods - bit field describing which modifier keys were held down
+* @return: none
+*/
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+		finalize(EXIT_SUCCESS);
+	//glfwSetWindowShouldClose(window, GLFW_TRUE);
+	if (key == GLFW_KEY_W && action != GLFW_RELEASE)
+		std::cout << 'W';
+	if (key == GLFW_KEY_S && action != GLFW_RELEASE)
+		std::cout << 'S';
+	if (key == GLFW_KEY_A && action != GLFW_RELEASE)
+		std::cout << 'A';
+	if (key == GLFW_KEY_D && action != GLFW_RELEASE)
+		std::cout << 'D';
+	if (key == GLFW_KEY_F && action == GLFW_PRESS) {
+		if (globals.fullscreen) {
+			glfwSetWindowMonitor(window, nullptr, globals.x, globals.y, 640, 480, 0);
+			glViewport(0, 0, 640, 480);
+			globals.fullscreen = false;
+			glfwSetInputMode(globals.window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+		}
+		else {
+			glfwGetWindowSize(window, &globals.x, &globals.y);
+			GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+			const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+			glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+			glViewport(0, 0, mode->width, mode->height);
+			globals.fullscreen = true;
+			glfwSetInputMode(globals.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+		}
+	}
+	float speed = 0.3f;
+
+	if ((glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) || (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)) {
+		glm::vec3 xz = player_position + speed * glm::normalize(glm::cross(looking_position, up));
+		player_position = check_collision(xz.x, xz.z);
+	}
+	if ((glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) || (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)) {
+		glm::vec3 xz = player_position - speed * glm::normalize(glm::cross(looking_position, up));
+		player_position = check_collision(xz.x, xz.z);
+	}
+	if ((glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) || (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)) {
+		float x = player_position.x + looking_position.x * speed;
+		float z = player_position.z + looking_position.z * speed;
+		player_position = check_collision(x, z);
+	}
+	if ((glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) || (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)) {
+		float x = player_position.x - looking_position.x * speed;
+		float z = player_position.z - looking_position.z * speed;
+		player_position = check_collision(x, z);
+	}
+	std::cout << "Player position: " << player_position.x << " " << player_position.y << " " << player_position.z << " ";
+}
+
+/* Editable: Mouse callback function - Pouze zaznamenáváme kliknutí, nereflektujeme žádné změny, jen vypisujeme v logu
+* @brief: Callback function for mouse input
+* @param: window - window that received the event
+* @param: button - mouse button that was pressed or released
+* @param: action - GLFW_PRESS or GLFW_RELEASE
+* @param: mods - bit field describing which modifier keys were held down
+* @return: none
+*/
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
+		std::cout << "MOUSE_RIGHT" << '\n';
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+		std::cout << "MOUSE_LEFT" << '\n';
+	if (button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_PRESS)
+		std::cout << "MOUSE_MIDDLE" << '\n';
+}
+
+/* Editable: Scroll callback function - Použité pro změnu FOV
+* @brief: Callback function for mouse wheel scrolling
+* @param: window - window that received the event
+* @param: xoffset - scroll offset along the x-axis
+* @param: yoffset - scroll offset along the y-axis
+* @return: none
+*/
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+	std::cout << "mouse wheel(" << xoffset << ", " << yoffset << ")";
+	globals.fov += 10 * -yoffset;
+	if (globals.fov > 170.0f) {
+		globals.fov = 170.0f;
+	}
+	if (globals.fov < 20.0f) {
+		globals.fov = 20.0f;
+	}
+}
+
+/* Editable: Cursor position callback function - Použité pro otáčení postavy, tedy kamery
+* @brief: Callback function for cursor position
+* @param: window - window that received the event
+* @param: xpos - new cursor x-coordinate, relative to the left edge of the content area
+* @param: ypos - new cursor y-coordinate, relative to the top edge of the content area
+* @return: none
+*/
+void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
+{
+	//processMouseMovement(lastxpos-xpos, lastypos-ypos);
+	std::cout << "cursor(" << xpos << ", " << ypos << ") ";
+
+	Yaw += (xpos - lastxpos) / 5;
+	Pitch += (lastypos - ypos) / 5;
+	std::cout << "yp(" << Yaw << ", " << Pitch << ") ";
+
+	if (true)
+	{
+		if (Pitch > 89.0f)
+			Pitch = 89.0f;
+		if (Pitch < -89.0f)
+			Pitch = -89.0f;
+	}
+
+	looking_position.x = cos(glm::radians(Yaw)) * cos(glm::radians(Pitch));
+	looking_position.y = sin(glm::radians(Pitch));
+	looking_position.z = sin(glm::radians(Yaw)) * cos(glm::radians(Pitch));
+
+	lastxpos = xpos;
+	lastypos = ypos;
+}
+
+
+//=== Main === 
 int main()
 {
 
+	// === Random number generator ===
 	std::mt19937_64 rng;
 	// initialize the random number generator with time-dependent seed
 	uint64_t timeSeed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
@@ -383,6 +518,7 @@ int main()
 	rng.seed(ss);
 	// initialize a uniform distribution between 0 and 1
 	std::uniform_real_distribution<double> unif(0, 1);
+
 
 	init_glfw();
 	init_glew();
@@ -545,58 +681,6 @@ int main()
 	return (EXIT_SUCCESS);
 }
 
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
-{
-	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-		finalize(EXIT_SUCCESS);
-		//glfwSetWindowShouldClose(window, GLFW_TRUE);
-	if (key == GLFW_KEY_W && action != GLFW_RELEASE)
-		std::cout << 'W';
-	if (key == GLFW_KEY_S && action != GLFW_RELEASE)
-		std::cout << 'S';
-	if (key == GLFW_KEY_A && action != GLFW_RELEASE)
-		std::cout << 'A';
-	if (key == GLFW_KEY_D && action != GLFW_RELEASE)
-		std::cout << 'D';
-	if (key == GLFW_KEY_F && action == GLFW_PRESS) {
-		if (globals.fullscreen) {
-			glfwSetWindowMonitor(window, nullptr, globals.x, globals.y, 640, 480, 0);
-			glViewport(0, 0, 640, 480);
-			globals.fullscreen = false;
-			glfwSetInputMode(globals.window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-		}
-		else {
-			glfwGetWindowSize(window, &globals.x, &globals.y);
-			GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-			const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-			glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
-			glViewport(0, 0, mode->width, mode->height);
-			globals.fullscreen = true;
-			glfwSetInputMode(globals.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-		}
-	}
-	float speed = 0.3f;
-
-	if ((glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) || (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)) {
-		glm::vec3 xz = player_position + speed * glm::normalize(glm::cross(looking_position, up));
-		player_position = check_collision(xz.x, xz.z);
-	}
-	if ((glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) || (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)) {
-		glm::vec3 xz = player_position - speed * glm::normalize(glm::cross(looking_position, up));
-		player_position = check_collision(xz.x, xz.z);
-	}
-	if ((glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) || (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)) {
-		float x = player_position.x + looking_position.x * speed;
-		float z = player_position.z + looking_position.z * speed;
-		player_position = check_collision(x, z);
-	}
-	if ((glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) || (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)) {
-		float x = player_position.x - looking_position.x * speed;
-		float z = player_position.z - looking_position.z * speed;
-		player_position = check_collision(x, z);
-	}
-	std::cout << "Player position: " << player_position.x << " " << player_position.y << " " << player_position.z << " ";
-}
 
 glm::vec3 check_collision(float x, float z) {
 	std::array<bool, 3> col = check_objects_collisions(x, z);
@@ -674,52 +758,7 @@ void init_object_coords() {
 	}
 }
 
-void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
-{
-	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
-		std::cout << "MOUSE_RIGHT" << '\n';
-	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
-		std::cout << "MOUSE_LEFT" << '\n';
-	if (button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_PRESS)
-		std::cout << "MOUSE_MIDDLE" << '\n';
-}
 
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
-{
-	std::cout << "mouse wheel(" << xoffset << ", " << yoffset << ")";
-	globals.fov += 10 * -yoffset;
-	if (globals.fov > 170.0f) {
-		globals.fov = 170.0f;
-	}
-	if (globals.fov < 20.0f) {
-		globals.fov = 20.0f;
-	}
-}
-
-void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
-{
-	//processMouseMovement(lastxpos-xpos, lastypos-ypos);
-	std::cout << "cursor(" << xpos << ", " << ypos << ") ";
-
-	Yaw += (xpos - lastxpos) / 5;
-	Pitch += (lastypos - ypos) / 5;
-	std::cout << "yp(" << Yaw << ", " << Pitch << ") ";
-
-	if (true)
-	{
-		if (Pitch > 89.0f)
-			Pitch = 89.0f;
-		if (Pitch < -89.0f)
-			Pitch = -89.0f;
-	}
-
-	looking_position.x = cos(glm::radians(Yaw)) * cos(glm::radians(Pitch));
-	looking_position.y = sin(glm::radians(Pitch));
-	looking_position.z = sin(glm::radians(Yaw)) * cos(glm::radians(Pitch));
-
-	lastxpos = xpos;
-	lastypos = ypos;
-}
 
 void va_setup(int index) {
 	// Generate the VAO and VBO
