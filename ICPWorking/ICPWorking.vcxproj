@@ -167,6 +167,12 @@
     <Object Include="resources\obj\teapot.obj" />
     <Object Include="resources\obj\work_glove.obj" />
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="resources\tex\box.png" />
+    <Image Include="resources\tex\brick.png" />
+    <Image Include="resources\tex\concrete.png" />
+    <Image Include="resources\tex\missing.png" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

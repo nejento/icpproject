@@ -19,6 +19,9 @@
     <Filter Include="Soubory zdrojů\Obj">
       <UniqueIdentifier>{4ba24b26-282d-44a9-8b34-adb06f720aa5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Soubory zdrojů\Textures">
+      <UniqueIdentifier>{323a8914-8f0f-4426-979d-1434c541e47d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ICPWorking.cpp">
@@ -78,5 +81,19 @@
     <Object Include="resources\obj\bunny_tri_vnt.obj">
       <Filter>Soubory zdrojů\Obj</Filter>
     </Object>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="resources\tex\box.png">
+      <Filter>Soubory zdrojů\Textures</Filter>
+    </Image>
+    <Image Include="resources\tex\brick.png">
+      <Filter>Soubory zdrojů\Textures</Filter>
+    </Image>
+    <Image Include="resources\tex\concrete.png">
+      <Filter>Soubory zdrojů\Textures</Filter>
+    </Image>
+    <Image Include="resources\tex\missing.png">
+      <Filter>Soubory zdrojů\Textures</Filter>
+    </Image>
   </ItemGroup>
 </Project>

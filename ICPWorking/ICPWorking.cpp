@@ -590,10 +590,10 @@ int main()
 	glViewport(0, 0, width, height);
 
 	// Načtení textur
-	texture_id[0] = gen_tex("resources/tex/box.png");
-	texture_id[1] = gen_tex("resources/tex/concrete.png");
-	texture_id[2] = gen_tex("resources/tex/brick.png");
-	texture_id[3] = gen_tex("resources/tex/missing.png");
+	texture_id[0] = gen_tex("resources/textures/box.png");
+	texture_id[1] = gen_tex("resources/textures/concrete.png");
+	texture_id[2] = gen_tex("resources/textures/brick.png");
+	texture_id[3] = gen_tex("resources/textures/missing.png");
 
 	// === Main Loop ===
 	while (!glfwWindowShouldClose(globals.window)) {
