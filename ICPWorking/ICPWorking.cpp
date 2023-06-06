@@ -53,33 +53,15 @@ std::string getShaderInfoLog(const GLuint obj);
 std::string textFileRead(const std::string fn);
 
 GLuint gen_tex(std::string filepath);
-void tex_setup(int index, int tex);
 void make_shader(std::string vertex_shader, std::string fragment_shader, GLuint* shader);
 void draw_textured(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix);
-
-/*
-struct vertex {
-	glm::vec3 position; // Vertex pos
-	glm::vec3 color; // Color
-	glm::vec3 normal; // Normal
-};
-*/
-
-// vertex with texture
-struct tex_vertex {
-	glm::vec3 position;
-	glm::vec2 texcoord;
-	glm::vec3 normal;
-};
-
-std::vector<tex_vertex> tex_vertices[4];
-GLuint texture_id[4];
 
 // create sound engine
 /*
 irrklang::ISoundEngine* engine = irrklang::createIrrKlangDevice();
 */
 
+void prepare_object();
 GLuint PrepareVAO(int index);
 
 glm::vec3 check_collision(float x, float z);
@@ -157,18 +139,46 @@ glm::vec3 scales[n_objects];
 glm::vec3 coordinates[n_objects];
 
 // === Asset Storage ===
+// Vertex with color
+/*
+struct vertex {
+	glm::vec3 position; // Vertex pos
+	glm::vec3 color; // Color
+	glm::vec3 normal; // Normal
+};
+*/
+
+// Vertex with texture
+struct tex_vertex {
+	glm::vec3 position;
+	glm::vec2 texcoord;
+	glm::vec3 normal;
+};
+
+// Asset type
+enum asset_type {
+	asset_type_color,
+	asset_type_texture
+};
+
+// Asset
 struct asset {
-	GLuint VAO;							// Vertex Array Object
-	GLuint VBO;							// Vertex Buffer Object
-	GLuint EBO;							// Element Buffer Object
-	std::vector<vertex> vertex_array;	// Vertex Array
-	std::vector<GLuint> indices_array;	// Index Array
-	glm::vec3 color;					// Color
-	glm::vec3 scale;					// Scale
-	glm::vec3 coord;					// Coordinates
+	asset_type type;							// Asset type
+	GLuint VAO;									// Vertex Array Object
+	GLuint VBO;									// Vertex Buffer Object
+	GLuint EBO;									// Element Buffer Object
+	std::vector<vertex> vertex_array;			// Vertex Array
+	std::vector<tex_vertex> tex_vertex_array;	// Vertex Array
+	std::vector<GLuint> indices_array;			// Index Array
+	glm::vec3 color;							// Color
+	glm::vec3 scale;							// Scale
+	glm::vec3 coord;							// Coordinates
 };
 const int n_assets = 16; // Počet inicializovaných objektů
 asset assets[n_assets];  // Pole inicializovaných objektů
+
+// Textures
+GLuint texture_id[4];
 
 // Objects with collisions
 struct coords {
@@ -581,16 +591,18 @@ int main()
 	// set visible area
 	glViewport(0, 0, width, height);
 
+	// Načtení textur
 	texture_id[0] = gen_tex("resources/tex/box.png");
 	texture_id[1] = gen_tex("resources/tex/concrete.png");
 	texture_id[2] = gen_tex("resources/tex/brick.png");
 	texture_id[3] = gen_tex("resources/tex/missing.png");
 
+	// === Main Loop ===
 	while (!glfwWindowShouldClose(globals.window)) {
 
 		glm::mat4 projectionMatrix = glm::perspective(
 			glm::radians(globals.fov), // The vertical Field of View, in radians: the amount of "zoom". Think "camera lens". Usually between 90� (extra wide) and 30� (quite zoomed in)
-			ratio,			               // Aspect Ratio. Depends on the size of your window.
+			ratio,			           // Aspect Ratio. Depends on the size of your window.
 			0.1f,                      // Near clipping plane. Keep as big as possible, or you'll get precision issues.
 			20000.0f                   // Far clipping plane. Keep as little as possible.
 		);
@@ -771,83 +783,56 @@ void init_object_coords() {
 	}
 }
 
-GLuint PrepareVAO(int index) {
 
-	GLuint resultVAO = glCreateShader(GL_VERTEX_SHADER); //just something to stop compile errors
+//loadOBJ("resources/obj/cube.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+void prepareObject() {
 
-	// Generate the VAO and VBO
-	glGenVertexArrays(1, &assets[index].VAO);
-	glGenBuffers(1, &assets[index].VBO);
-	glGenBuffers(1, &assets[index].EBO);
-	// Bind VAO (set as the current)
-	glBindVertexArray(assets[index].VAO);
-	// Bind the VBO, set type as GL_ARRAY_BUFFER
-	glBindBuffer(GL_ARRAY_BUFFER, assets[index].VBO);
-	// Fill-in data into the VBO
-	glBufferData(GL_ARRAY_BUFFER, assets[index].vertex_array.size() * sizeof(vertex), assets[index].vertex_array.data(), GL_DYNAMIC_DRAW);
-	// Bind EBO, set type GL_ELEMENT_ARRAY_BUFFER
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, assets[index].EBO);
-	// Fill-in data into the EBO
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, assets[index].indices_array.size() * sizeof(GLuint), assets[index].indices_array.data(), GL_DYNAMIC_DRAW);
-	// Set Vertex Attribute to explain OpenGL how to interpret the VBO
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(0 + offsetof(vertex, position)));
-	// Enable the Vertex Attribute 0 = position
-	glEnableVertexAttribArray(0);
-	// Set end enable Vertex Attribute 1 = Texture Coordinates
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(0 + offsetof(vertex, color)));
-	glEnableVertexAttribArray(1);
-
-	// TEST
-	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(0 + offsetof(vertex, normal)));
-	glEnableVertexAttribArray(2);
-
-	// Bind VBO and VAO to 0 to prevent unintended modification
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindVertexArray(0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-	return resultVAO;
 }
 
 void setup_objects() {
+
+	// === Textured objects ===
+
 	glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
 
 	// textured 0
-	tex_vertices[0].push_back({ {-10.0f, -1.0f, -10.0f}, glm::vec2(-10.0f, -10.0f), up });
-	tex_vertices[0].push_back({ { -10.0f, -1.0f, 10.0f}, glm::vec2(-10.0f, 10.0f), up });
-	tex_vertices[0].push_back({ { 0.0f, -1.0f, 0.0f}, glm::vec2(0.0f, 0.0f), up });
+	assets[0].type = asset_type_texture;
+	assets[0].tex_vertex_array.push_back({ {-10.0f, -1.0f, -10.0f}, glm::vec2(-10.0f, -10.0f), up });
+	assets[0].tex_vertex_array.push_back({ { -10.0f, -1.0f, 10.0f}, glm::vec2(-10.0f, 10.0f), up });
+	assets[0].tex_vertex_array.push_back({ { 0.0f, -1.0f, 0.0f}, glm::vec2(0.0f, 0.0f), up });
 	assets[0].indices_array = { 0, 1, 2 };
-
-	tex_setup(0, 0);
+	PrepareVAO(0);
 
 	// textured 1
-	tex_vertices[1].push_back({ { 10.0f, -1.0f, 10.0f }, glm::vec2(-10.0f, 10.0f), up });
-	tex_vertices[1].push_back({ { 10.0f, -1.0f, -10.0f}, glm::vec2(10.0f, 10.0f), up });
-	tex_vertices[1].push_back({ { 0.0f, -1.0f, 0.0f}, glm::vec2(0.0f, 0.0f), up });
+	assets[13].type = asset_type_texture;
+	assets[13].tex_vertex_array.push_back({ { 10.0f, -1.0f, 10.0f }, glm::vec2(-10.0f, 10.0f), up });
+	assets[13].tex_vertex_array.push_back({ { 10.0f, -1.0f, -10.0f}, glm::vec2(10.0f, 10.0f), up });
+	assets[13].tex_vertex_array.push_back({ { 0.0f, -1.0f, 0.0f}, glm::vec2(0.0f, 0.0f), up });
 	assets[13].indices_array = { 0, 1, 2 };
-
-	tex_setup(13, 1);
+	PrepareVAO(13);
 
 	// textured 2
-	tex_vertices[2].push_back({ { 10.0f, -1.0f, -10.0f }, glm::vec2(-10.0f, 10.0f), up });
-	tex_vertices[2].push_back({ { -10.0f, -1.0f, -10.0f}, glm::vec2(-10.0f, -10.0f), up });
-	tex_vertices[2].push_back({ { 0.0f, -1.0f, 0.0f}, glm::vec2(0.0f, 0.0f), up });
+	assets[14].type = asset_type_texture;
+	assets[14].tex_vertex_array.push_back({ { 10.0f, -1.0f, -10.0f }, glm::vec2(-10.0f, 10.0f), up });
+	assets[14].tex_vertex_array.push_back({ { -10.0f, -1.0f, -10.0f}, glm::vec2(-10.0f, -10.0f), up });
+	assets[14].tex_vertex_array.push_back({ { 0.0f, -1.0f, 0.0f}, glm::vec2(0.0f, 0.0f), up });
 	assets[14].indices_array = { 0, 1, 2 };
-
-	tex_setup(14, 2);
+	PrepareVAO(14);
 
 	// textured 3
-	tex_vertices[3].push_back({ { -10.0f, -1.0f, 10.0f}, glm::vec2(-10.0f, 10.0f), up });
-	tex_vertices[3].push_back({ { 10.0f, -1.0f, 10.0f }, glm::vec2(10.0f, 10.0f), up });
-	tex_vertices[3].push_back({ { 0.0f, -1.0f, 0.0f}, glm::vec2(0.0f, 0.0f), up });
+	assets[15].type = asset_type_texture;
+	assets[15].tex_vertex_array.push_back({ { -10.0f, -1.0f, 10.0f}, glm::vec2(-10.0f, 10.0f), up });
+	assets[15].tex_vertex_array.push_back({ { 10.0f, -1.0f, 10.0f }, glm::vec2(10.0f, 10.0f), up });
+	assets[15].tex_vertex_array.push_back({ { 0.0f, -1.0f, 0.0f}, glm::vec2(0.0f, 0.0f), up });
 	assets[15].indices_array = { 0, 1, 2 };
+	PrepareVAO(15);
 
-	tex_setup(15, 3);
 
-
+	// === Colored objects ===
 	int index;
 	
 	index = 1;
+	assets[index].type = asset_type_color;
 	//setup color, scale and coordinates for object
 	assets[index].color = { 0.3, 0.3, 0.3 };
 	assets[index].scale = { 1, 1, 1 };
@@ -858,6 +843,7 @@ void setup_objects() {
 	PrepareVAO(1);
 
 	index = 2;
+	assets[index].type = asset_type_color;
 	assets[index].color = { 0.3, 0.3, 0.3 };
 	assets[index].scale = { 1, 1, 1 };
 	assets[index].coord = { 10.5, -0.5, -10.5 };
@@ -865,6 +851,7 @@ void setup_objects() {
 	PrepareVAO(2);
 
 	index = 3;
+	assets[index].type = asset_type_color;
 	assets[index].color = { 0.3, 0.3, 0.3 };
 	assets[index].scale = { 1, 1, 20 };
 	assets[index].coord = { -10.5, -0.5, 0 };
@@ -872,6 +859,7 @@ void setup_objects() {
 	PrepareVAO(3);
 
 	index = 4;
+	assets[index].type = asset_type_color;
 	assets[index].color = { 0.3, 0.3, 0.3 };
 	assets[index].scale = { 1, 1, 20 };
 	assets[index].coord = { 10.5, -0.5, 0 };
@@ -879,6 +867,7 @@ void setup_objects() {
 	PrepareVAO(4);
 
 	index = 5;
+	assets[index].type = asset_type_color;
 	assets[index].color = { 0.3, 0.3, 0.3 };
 	assets[index].scale = { 20, 1, 1 };
 	assets[index].coord = { 0, -0.5, -10.5 };
@@ -886,6 +875,7 @@ void setup_objects() {
 	PrepareVAO(5);
 
 	index = 6;
+	assets[index].type = asset_type_color;
 	assets[index].color = { 0.3, 0.3, 0.3 };
 	assets[index].scale = { 20, 1, 1 };
 	assets[index].coord = { 0, -0.5, 10.5 };
@@ -893,6 +883,7 @@ void setup_objects() {
 	PrepareVAO(6);
 
 	index = 7;
+	assets[index].type = asset_type_color;
 	assets[index].color = { 0.3, 0.3, 0.3 };
 	assets[index].scale = { 1, 1, 1 };
 	assets[index].coord = { 10.5, -0.5, 10.5 };
@@ -900,6 +891,7 @@ void setup_objects() {
 	PrepareVAO(7);
 
 	index = 8;
+	assets[index].type = asset_type_color;
 	assets[index].color = { 0.3, 0.3, 0.3 };
 	assets[index].scale = { 1, 1, 1 };
 	assets[index].coord = { -10.5, -0.5, -10.5 };
@@ -907,6 +899,7 @@ void setup_objects() {
 	PrepareVAO(8);
 
 	index = 9;
+	assets[index].type = asset_type_color;
 	assets[index].color = { 0.7, 0.7, 0.0 };
 	assets[index].scale = { 2, 1, 2 };
 	assets[index].coord = { 0, -0.5, 0 };
@@ -914,6 +907,7 @@ void setup_objects() {
 	PrepareVAO(9);
 
 	index = 10;
+	assets[index].type = asset_type_color;
 	assets[index].color = { 1, 1, 1 };
 	assets[index].scale = { 2, 2, 2 };
 	assets[index].coord = { -20, 15, -20 };
@@ -921,6 +915,7 @@ void setup_objects() {
 	PrepareVAO(10);
 
 	index = 11;
+	assets[index].type = asset_type_color;
 	assets[index].color = { 1, 0.1, 0.1 };
 	assets[index].scale = { 0.1, 0.1, 0.1 };
 	assets[index].coord = { 7, 3, 7 };
@@ -928,6 +923,7 @@ void setup_objects() {
 	PrepareVAO(11);
 
 	index = 12;
+	assets[index].type = asset_type_color;
 	assets[index].color = { 0.1, 0.1, 1.0 };
 	assets[index].scale = { 0.1, 0.1, 0.1 };
 	assets[index].coord = { -10.5, 0.0, -10.5 };
@@ -988,7 +984,10 @@ GLuint gen_tex(std::string filepath)
 	return ID;
 }
 
-void tex_setup(int index, int tex) {
+GLuint PrepareVAO(int index) {
+
+	GLuint resultVAO = glCreateShader(GL_VERTEX_SHADER); //just something to stop compile errors
+
 	// Generate the VAO and VBO
 	glGenVertexArrays(1, &assets[index].VAO);
 	glGenBuffers(1, &assets[index].VBO);
@@ -997,25 +996,53 @@ void tex_setup(int index, int tex) {
 	glBindVertexArray(assets[index].VAO);
 	// Bind the VBO, set type as GL_ARRAY_BUFFER
 	glBindBuffer(GL_ARRAY_BUFFER, assets[index].VBO);
-	// Fill-in data into the VBO
-	glBufferData(GL_ARRAY_BUFFER, tex_vertices[tex].size() * sizeof(tex_vertex), tex_vertices[tex].data(), GL_DYNAMIC_DRAW);
-	// Bind EBO, set type GL_ELEMENT_ARRAY_BUFFER
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, assets[index].EBO);
-	// Fill-in data into the EBO
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, assets[0].indices_array.size() * sizeof(GLuint), assets[0].indices_array.data(), GL_DYNAMIC_DRAW);
-	// Set Vertex Attribute to explain OpenGL how to interpret the VBO
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(tex_vertex), (void*)(0 + offsetof(tex_vertex, position)));
-	// Enable the Vertex Attribute 0 = position
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(tex_vertex), (void*)(0 + offsetof(tex_vertex, texcoord)));
-	glEnableVertexAttribArray(1);
-	// TEST
-	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(tex_vertex), (void*)(0 + offsetof(tex_vertex, normal)));
-	glEnableVertexAttribArray(2);
+
+	if (assets[index].type == asset_type_texture) 
+	{
+		// Fill-in data into the VBO
+		glBufferData(GL_ARRAY_BUFFER, assets[index].tex_vertex_array.size() * sizeof(tex_vertex), assets[index].tex_vertex_array.data(), GL_DYNAMIC_DRAW);
+		// Bind EBO, set type GL_ELEMENT_ARRAY_BUFFER
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, assets[index].EBO);
+		// Fill-in data into the EBO
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, assets[0].indices_array.size() * sizeof(GLuint), assets[0].indices_array.data(), GL_DYNAMIC_DRAW);
+		// Set Vertex Attribute to explain OpenGL how to interpret the VBO
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(tex_vertex), (void*)(0 + offsetof(tex_vertex, position)));
+		// Enable the Vertex Attribute 0 = position
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(tex_vertex), (void*)(0 + offsetof(tex_vertex, texcoord)));
+		glEnableVertexAttribArray(1);
+
+		// TEST
+		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(tex_vertex), (void*)(0 + offsetof(tex_vertex, normal)));
+		glEnableVertexAttribArray(2);
+	}
+	else if (assets[index].type == asset_type_color)
+	{
+		// Fill-in data into the VBO
+		glBufferData(GL_ARRAY_BUFFER, assets[index].vertex_array.size() * sizeof(vertex), assets[index].vertex_array.data(), GL_DYNAMIC_DRAW);
+		// Bind EBO, set type GL_ELEMENT_ARRAY_BUFFER
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, assets[index].EBO);
+		// Fill-in data into the EBO
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, assets[index].indices_array.size() * sizeof(GLuint), assets[index].indices_array.data(), GL_DYNAMIC_DRAW);
+		// Set Vertex Attribute to explain OpenGL how to interpret the VBO
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(0 + offsetof(vertex, position)));
+		// Enable the Vertex Attribute 0 = position
+		glEnableVertexAttribArray(0);
+		// Set end enable Vertex Attribute 1 = Texture Coordinates
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(0 + offsetof(vertex, color)));
+		glEnableVertexAttribArray(1);
+
+		// TEST
+		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(0 + offsetof(vertex, normal)));
+		glEnableVertexAttribArray(2);
+	}
+
 	// Bind VBO and VAO to 0 to prevent unintended modification
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+	return resultVAO;
 }
 
 void make_shader(std::string vertex_shader, std::string fragment_shader, GLuint* shader) {
