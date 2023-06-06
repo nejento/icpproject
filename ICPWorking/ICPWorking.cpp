@@ -52,7 +52,6 @@ std::string getProgramInfoLog(const GLuint obj);
 std::string getShaderInfoLog(const GLuint obj);
 std::string textFileRead(const std::string fn);
 
-
 GLuint gen_tex(std::string filepath);
 void tex_setup(int index, int tex);
 void make_shader(std::string vertex_shader, std::string fragment_shader, GLuint* shader);
@@ -81,7 +80,7 @@ GLuint texture_id[4];
 irrklang::ISoundEngine* engine = irrklang::createIrrKlangDevice();
 */
 
-void va_setup(int index);
+GLuint PrepareVAO(int index);
 
 glm::vec3 check_collision(float x, float z);
 std::array<bool, 3> check_objects_collisions(float x, float z);
@@ -156,6 +155,20 @@ glm::vec3 colors[n_objects];
 glm::vec3 scales[n_objects];
 // Object coordinates
 glm::vec3 coordinates[n_objects];
+
+// === Asset Storage ===
+struct asset {
+	GLuint VAO;							// Vertex Array Object
+	GLuint VBO;							// Vertex Buffer Object
+	GLuint EBO;							// Element Buffer Object
+	std::vector<vertex> vertex_array;	// Vertex Array
+	std::vector<GLuint> indices_array;	// Index Array
+	glm::vec3 color;					// Color
+	glm::vec3 scale;					// Scale
+	glm::vec3 coord;					// Coordinates
+};
+const int n_assets = 16; // Počet inicializovaných objektů
+asset assets[n_assets];  // Pole inicializovaných objektů
 
 // Objects with collisions
 struct coords {
@@ -620,24 +633,24 @@ int main()
 
 			// Use buffers
 			for (int i = 1; i < n_objects - 6; i++) {
-				glBindVertexArray(VAO[i]);
-				glDrawElements(GL_TRIANGLES, indices_array[i].size(), GL_UNSIGNED_INT, 0);
+				glBindVertexArray(assets[i].VAO);
+				glDrawElements(GL_TRIANGLES, assets[i].indices_array.size(), GL_UNSIGNED_INT, 0);
 			}
 
 			// move sphere (sun)
 			glm::mat4 temp = m_m;
 			m_m = glm::rotate(m_m, glm::radians(10.0f * (float)glfwGetTime()), glm::vec3(1.0f, 0.0f, 0.0f));
 			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
-			glBindVertexArray(VAO[10]);
-			glDrawElements(GL_TRIANGLES, indices_array[10].size(), GL_UNSIGNED_INT, 0);
+			glBindVertexArray(assets[10].VAO);
+			glDrawElements(GL_TRIANGLES, assets[10].indices_array.size(), GL_UNSIGNED_INT, 0);
 			m_m = temp;
 
 			// rotate teapot
 			temp = m_m;
 			m_m = glm::rotate(m_m, glm::radians(20.0f * (float)glfwGetTime()), glm::vec3(0.0f, 1.0f, 0.0f));
 			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
-			glBindVertexArray(VAO[11]);
-			glDrawElements(GL_TRIANGLES, indices_array[11].size(), GL_UNSIGNED_INT, 0);
+			glBindVertexArray(assets[11].VAO);
+			glDrawElements(GL_TRIANGLES, assets[11].indices_array.size(), GL_UNSIGNED_INT, 0);
 			m_m = temp;
 
 			// move teapot on edge
@@ -648,8 +661,8 @@ int main()
 				((move_count < edge * 3) ? glm::vec3(edge * 0.003f - move_count * 0.001f, 0, edge / 1000) : glm::vec3(0, 0, edge * 0.004f - move_count * 0.001f));
 			m_m = glm::translate(m_m, change);
 			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
-			glBindVertexArray(VAO[12]);
-			glDrawElements(GL_TRIANGLES, indices_array[12].size(), GL_UNSIGNED_INT, 0);
+			glBindVertexArray(assets[12].VAO);
+			glDrawElements(GL_TRIANGLES, assets[12].indices_array.size(), GL_UNSIGNED_INT, 0);
 			m_m = temp;
 			move_count++;
 			if (move_count == edge * 4) {
@@ -758,23 +771,24 @@ void init_object_coords() {
 	}
 }
 
+GLuint PrepareVAO(int index) {
 
+	GLuint resultVAO = glCreateShader(GL_VERTEX_SHADER); //just something to stop compile errors
 
-void va_setup(int index) {
 	// Generate the VAO and VBO
-	glGenVertexArrays(1, &VAO[index]);
-	glGenBuffers(1, &VBO[index]);
-	glGenBuffers(1, &EBO[index]);
+	glGenVertexArrays(1, &assets[index].VAO);
+	glGenBuffers(1, &assets[index].VBO);
+	glGenBuffers(1, &assets[index].EBO);
 	// Bind VAO (set as the current)
-	glBindVertexArray(VAO[index]);
+	glBindVertexArray(assets[index].VAO);
 	// Bind the VBO, set type as GL_ARRAY_BUFFER
-	glBindBuffer(GL_ARRAY_BUFFER, VBO[index]);
+	glBindBuffer(GL_ARRAY_BUFFER, assets[index].VBO);
 	// Fill-in data into the VBO
-	glBufferData(GL_ARRAY_BUFFER, vertex_array[index].size() * sizeof(vertex), vertex_array[index].data(), GL_DYNAMIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, assets[index].vertex_array.size() * sizeof(vertex), assets[index].vertex_array.data(), GL_DYNAMIC_DRAW);
 	// Bind EBO, set type GL_ELEMENT_ARRAY_BUFFER
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO[index]);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, assets[index].EBO);
 	// Fill-in data into the EBO
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_array[index].size() * sizeof(GLuint), indices_array[index].data(), GL_DYNAMIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, assets[index].indices_array.size() * sizeof(GLuint), assets[index].indices_array.data(), GL_DYNAMIC_DRAW);
 	// Set Vertex Attribute to explain OpenGL how to interpret the VBO
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(0 + offsetof(vertex, position)));
 	// Enable the Vertex Attribute 0 = position
@@ -791,141 +805,139 @@ void va_setup(int index) {
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+	return resultVAO;
 }
 
 void setup_objects() {
 	glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+
 	// textured 0
 	tex_vertices[0].push_back({ {-10.0f, -1.0f, -10.0f}, glm::vec2(-10.0f, -10.0f), up });
 	tex_vertices[0].push_back({ { -10.0f, -1.0f, 10.0f}, glm::vec2(-10.0f, 10.0f), up });
 	tex_vertices[0].push_back({ { 0.0f, -1.0f, 0.0f}, glm::vec2(0.0f, 0.0f), up });
-	indices_array[0] = { 0, 1, 2 };
+	assets[0].indices_array = { 0, 1, 2 };
 
 	tex_setup(0, 0);
+
 	// textured 1
 	tex_vertices[1].push_back({ { 10.0f, -1.0f, 10.0f }, glm::vec2(-10.0f, 10.0f), up });
 	tex_vertices[1].push_back({ { 10.0f, -1.0f, -10.0f}, glm::vec2(10.0f, 10.0f), up });
 	tex_vertices[1].push_back({ { 0.0f, -1.0f, 0.0f}, glm::vec2(0.0f, 0.0f), up });
-	indices_array[13] = { 0, 1, 2 };
+	assets[13].indices_array = { 0, 1, 2 };
 
 	tex_setup(13, 1);
+
 	// textured 2
 	tex_vertices[2].push_back({ { 10.0f, -1.0f, -10.0f }, glm::vec2(-10.0f, 10.0f), up });
 	tex_vertices[2].push_back({ { -10.0f, -1.0f, -10.0f}, glm::vec2(-10.0f, -10.0f), up });
 	tex_vertices[2].push_back({ { 0.0f, -1.0f, 0.0f}, glm::vec2(0.0f, 0.0f), up });
-	indices_array[14] = { 0, 1, 2 };
+	assets[14].indices_array = { 0, 1, 2 };
 
 	tex_setup(14, 2);
+
 	// textured 3
 	tex_vertices[3].push_back({ { -10.0f, -1.0f, 10.0f}, glm::vec2(-10.0f, 10.0f), up });
 	tex_vertices[3].push_back({ { 10.0f, -1.0f, 10.0f }, glm::vec2(10.0f, 10.0f), up });
 	tex_vertices[3].push_back({ { 0.0f, -1.0f, 0.0f}, glm::vec2(0.0f, 0.0f), up });
-	indices_array[15] = { 0, 1, 2 };
+	assets[15].indices_array = { 0, 1, 2 };
 
 	tex_setup(15, 3);
 
+
+	int index;
+	
+	index = 1;
 	//setup color, scale and coordinates for object
-	colors[1] = { 0.3, 0.3, 0.3 };
-	scales[1] = { 1, 1, 1 };
-	coordinates[1] = { -10.5, -0.5, 10.5 };
+	assets[index].color = { 0.3, 0.3, 0.3 };
+	assets[index].scale = { 1, 1, 1 };
+	assets[index].coord = { -10.5, -0.5, 10.5 };
 	//load object from file
-	loadOBJ("resources/obj/cube.obj", vertex_array[1], indices_array[1], colors[1], scales[1], coordinates[1]);
+	loadOBJ("resources/obj/cube.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
 	//setup vertex array
-	va_setup(1);
+	PrepareVAO(1);
 
-	colors[2] = { 0.3, 0.3, 0.3 };
-	scales[2] = { 1, 1, 1 };
-	coordinates[2] = { 10.5, -0.5, -10.5 };
-	loadOBJ("resources/obj/cube.obj", vertex_array[2], indices_array[2], colors[2], scales[2], coordinates[2]);
+	index = 2;
+	assets[index].color = { 0.3, 0.3, 0.3 };
+	assets[index].scale = { 1, 1, 1 };
+	assets[index].coord = { 10.5, -0.5, -10.5 };
+	loadOBJ("resources/obj/cube.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+	PrepareVAO(2);
 
-	va_setup(2);
+	index = 3;
+	assets[index].color = { 0.3, 0.3, 0.3 };
+	assets[index].scale = { 1, 1, 20 };
+	assets[index].coord = { -10.5, -0.5, 0 };
+	loadOBJ("resources/obj/cube.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+	PrepareVAO(3);
 
+	index = 4;
+	assets[index].color = { 0.3, 0.3, 0.3 };
+	assets[index].scale = { 1, 1, 20 };
+	assets[index].coord = { 10.5, -0.5, 0 };
+	loadOBJ("resources/obj/cube.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+	PrepareVAO(4);
 
-	colors[3] = { 0.3, 0.3, 0.3 };
-	scales[3] = { 1, 1, 20 };
-	coordinates[3] = { -10.5, -0.5, 0 };
-	loadOBJ("resources/obj/cube.obj", vertex_array[3], indices_array[3], colors[3], scales[3], coordinates[3]);
+	index = 5;
+	assets[index].color = { 0.3, 0.3, 0.3 };
+	assets[index].scale = { 20, 1, 1 };
+	assets[index].coord = { 0, -0.5, -10.5 };
+	loadOBJ("resources/obj/cube.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+	PrepareVAO(5);
 
-	va_setup(3);
+	index = 6;
+	assets[index].color = { 0.3, 0.3, 0.3 };
+	assets[index].scale = { 20, 1, 1 };
+	assets[index].coord = { 0, -0.5, 10.5 };
+	loadOBJ("resources/obj/cube.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+	PrepareVAO(6);
 
-	colors[4] = { 0.3, 0.3, 0.3 };
-	scales[4] = { 1, 1, 20 };
-	coordinates[4] = { 10.5, -0.5, 0 };
-	loadOBJ("resources/obj/cube.obj", vertex_array[4], indices_array[4], colors[4], scales[4], coordinates[4]);
+	index = 7;
+	assets[index].color = { 0.3, 0.3, 0.3 };
+	assets[index].scale = { 1, 1, 1 };
+	assets[index].coord = { 10.5, -0.5, 10.5 };
+	loadOBJ("resources/obj/cube.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+	PrepareVAO(7);
 
-	va_setup(4);
+	index = 8;
+	assets[index].color = { 0.3, 0.3, 0.3 };
+	assets[index].scale = { 1, 1, 1 };
+	assets[index].coord = { -10.5, -0.5, -10.5 };
+	loadOBJ("resources/obj/cube.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+	PrepareVAO(8);
 
-	colors[5] = { 0.3, 0.3, 0.3 };
-	scales[5] = { 20, 1, 1 };
-	coordinates[5] = { 0, -0.5, -10.5 };
-	loadOBJ("resources/obj/cube.obj", vertex_array[5], indices_array[5], colors[5], scales[5], coordinates[5]);
+	index = 9;
+	assets[index].color = { 0.7, 0.7, 0.0 };
+	assets[index].scale = { 2, 1, 2 };
+	assets[index].coord = { 0, -0.5, 0 };
+	loadOBJ("resources/obj/cube.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+	PrepareVAO(9);
 
-	va_setup(5);
+	index = 10;
+	assets[index].color = { 1, 1, 1 };
+	assets[index].scale = { 2, 2, 2 };
+	assets[index].coord = { -20, 15, -20 };
+	loadOBJ("resources/obj/sphere.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+	PrepareVAO(10);
 
-	colors[6] = { 0.3, 0.3, 0.3 };
-	scales[6] = { 20, 1, 1 };
-	coordinates[6] = { 0, -0.5, 10.5 };
-	loadOBJ("resources/obj/cube.obj", vertex_array[6], indices_array[6], colors[6], scales[6], coordinates[6]);
+	index = 11;
+	assets[index].color = { 1, 0.1, 0.1 };
+	assets[index].scale = { 0.1, 0.1, 0.1 };
+	assets[index].coord = { 7, 3, 7 };
+	loadOBJ("resources/obj/teapot.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+	PrepareVAO(11);
 
-	va_setup(6);
-
-	colors[7] = { 0.3, 0.3, 0.3 };
-	scales[7] = { 1, 1, 1 };
-	coordinates[7] = { 10.5, -0.5, 10.5 };
-	loadOBJ("resources/obj/cube.obj", vertex_array[7], indices_array[7], colors[7], scales[7], coordinates[7]);
-
-	va_setup(7);
-
-	colors[8] = { 0.3, 0.3, 0.3 };
-	scales[8] = { 1, 1, 1 };
-	coordinates[8] = { -10.5, -0.5, -10.5 };
-	loadOBJ("resources/obj/cube.obj", vertex_array[8], indices_array[8], colors[8], scales[8], coordinates[8]);
-
-	va_setup(8);
-
-	colors[9] = { 0.7, 0.7, 0.0 };
-	scales[9] = { 2, 1, 2 };
-	coordinates[9] = { 0, -0.5, 0 };
-
-	loadOBJ("resources/obj/cube.obj", vertex_array[9], indices_array[9], colors[9], scales[9], coordinates[9]);
-
-	va_setup(9);
-
-	colors[10] = { 1, 1, 1 };
-	scales[10] = { 2, 2, 2 };
-	coordinates[10] = { -20, 15, -20 };
-	loadOBJ("resources/obj/sphere.obj", vertex_array[10], indices_array[10], colors[10], scales[10], coordinates[10]);
-
-	va_setup(10);
-
-	colors[11] = { 1, 0.1, 0.1 };
-	scales[11] = { 0.1, 0.1, 0.1 };
-	coordinates[11] = { 7, 3, 7 };
-
-	loadOBJ("resources/obj/teapot.obj", vertex_array[11], indices_array[11], colors[11], scales[11], coordinates[11]);
-
-	va_setup(11);
-
-	colors[11] = { 1, 0.1, 0.1 };
-	scales[11] = { 0.1, 0.1, 0.1 };
-	coordinates[11] = { 7, 3, 7 };
-
-	loadOBJ("resources/obj/teapot.obj", vertex_array[11], indices_array[11], colors[11], scales[11], coordinates[11]);
-
-	va_setup(11);
-
-	colors[12] = { 0.1, 0.1, 1.0 };
-	scales[12] = { 0.1, 0.1, 0.1 };
-	coordinates[12] = { -10.5, 0.0, -10.5 };
-
-	loadOBJ("resources/obj/teapot.obj", vertex_array[12], indices_array[12], colors[12], scales[12], coordinates[12]);
-
-	va_setup(12);
+	index = 12;
+	assets[index].color = { 0.1, 0.1, 1.0 };
+	assets[index].scale = { 0.1, 0.1, 0.1 };
+	assets[index].coord = { -10.5, 0.0, -10.5 };
+	loadOBJ("resources/obj/teapot.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+	PrepareVAO(12);
 
 	//choose objects with collisions
 	int j = 0;
 	for (int i : {1, 2, 3, 4, 5, 6, 7, 8, 9}) {
-		col_obj[j] = vertex_array[i];
+		col_obj[j] = assets[i].vertex_array;
 		j++;
 	}
 	init_object_coords();
@@ -978,19 +990,19 @@ GLuint gen_tex(std::string filepath)
 
 void tex_setup(int index, int tex) {
 	// Generate the VAO and VBO
-	glGenVertexArrays(1, &VAO[index]);
-	glGenBuffers(1, &VBO[index]);
-	glGenBuffers(1, &EBO[index]);
+	glGenVertexArrays(1, &assets[index].VAO);
+	glGenBuffers(1, &assets[index].VBO);
+	glGenBuffers(1, &assets[index].EBO);
 	// Bind VAO (set as the current)
-	glBindVertexArray(VAO[index]);
+	glBindVertexArray(assets[index].VAO);
 	// Bind the VBO, set type as GL_ARRAY_BUFFER
-	glBindBuffer(GL_ARRAY_BUFFER, VBO[index]);
+	glBindBuffer(GL_ARRAY_BUFFER, assets[index].VBO);
 	// Fill-in data into the VBO
 	glBufferData(GL_ARRAY_BUFFER, tex_vertices[tex].size() * sizeof(tex_vertex), tex_vertices[tex].data(), GL_DYNAMIC_DRAW);
 	// Bind EBO, set type GL_ELEMENT_ARRAY_BUFFER
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO[index]);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, assets[index].EBO);
 	// Fill-in data into the EBO
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_array[0].size() * sizeof(GLuint), indices_array[0].data(), GL_DYNAMIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, assets[0].indices_array.size() * sizeof(GLuint), assets[0].indices_array.data(), GL_DYNAMIC_DRAW);
 	// Set Vertex Attribute to explain OpenGL how to interpret the VBO
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(tex_vertex), (void*)(0 + offsetof(tex_vertex, position)));
 	// Enable the Vertex Attribute 0 = position
@@ -1063,20 +1075,21 @@ void draw_textured(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix) {
 	glUniform1i(glGetUniformLocation(prog_tex, "tex0"), 0);
 
 	// draw object using VAO (Bind+DrawElements+Unbind)
-	glBindVertexArray(VAO[0]);
+	glBindVertexArray(assets[0].VAO);
 	glBindTexture(GL_TEXTURE_2D, texture_id[0]);
-	glDrawElements(GL_TRIANGLES, indices_array[0].size(), GL_UNSIGNED_INT, 0);
+	glDrawElements(GL_TRIANGLES, assets[0].indices_array.size(), GL_UNSIGNED_INT, 0);
 
-	glBindVertexArray(VAO[13]);
+	glBindVertexArray(assets[13].VAO);
 	glBindTexture(GL_TEXTURE_2D, texture_id[1]);
-	glDrawElements(GL_TRIANGLES, indices_array[13].size(), GL_UNSIGNED_INT, 0);
+	glDrawElements(GL_TRIANGLES, assets[13].indices_array.size(), GL_UNSIGNED_INT, 0);
 
-	glBindVertexArray(VAO[14]);
+	glBindVertexArray(assets[14].VAO);
 	glBindTexture(GL_TEXTURE_2D, texture_id[2]);
-	glDrawElements(GL_TRIANGLES, indices_array[14].size(), GL_UNSIGNED_INT, 0);
+	glDrawElements(GL_TRIANGLES, assets[14].indices_array.size(), GL_UNSIGNED_INT, 0);
 
-	glBindVertexArray(VAO[15]);
+	glBindVertexArray(assets[15].VAO);
 	glBindTexture(GL_TEXTURE_2D, texture_id[3]);
-	glDrawElements(GL_TRIANGLES, indices_array[15].size(), GL_UNSIGNED_INT, 0);
+	glDrawElements(GL_TRIANGLES, assets[15].indices_array.size(), GL_UNSIGNED_INT, 0);
+
 	glUseProgram(prog_h);
 }
