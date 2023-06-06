@@ -781,6 +781,9 @@ void init_object_coords() {
 	}
 }
 
+/*
+* Setup objects
+*/
 void setup_objects() {
 
 	// === Textured objects ===
