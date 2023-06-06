@@ -783,12 +783,6 @@ void init_object_coords() {
 	}
 }
 
-
-//loadOBJ("resources/obj/cube.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
-void prepareObject() {
-
-}
-
 void setup_objects() {
 
 	// === Textured objects ===
@@ -936,9 +930,14 @@ void setup_objects() {
 		col_obj[j] = assets[i].vertex_array;
 		j++;
 	}
+
 	init_object_coords();
 }
 
+/* Generates a texture object from an image file
+* filepath: path to the image file
+* returns: the ID of the generated texture object
+*/
 GLuint gen_tex(std::string filepath)
 {
 	GLuint ID;
@@ -984,6 +983,10 @@ GLuint gen_tex(std::string filepath)
 	return ID;
 }
 
+/* Prepares the VAO for the given asset
+* @param index - the index of the asset in the assets array
+* @return the VAO of the asset
+*/
 GLuint PrepareVAO(int index) {
 
 	GLuint resultVAO = glCreateShader(GL_VERTEX_SHADER); //just something to stop compile errors
