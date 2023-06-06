@@ -43,22 +43,16 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="resources\basicChess.vert">
+    <None Include="resources\texture.vert">
       <Filter>Soubory zdrojů\Shaders</Filter>
     </None>
-    <None Include="resources\basic.frag">
+    <None Include="resources\my.frag">
       <Filter>Soubory zdrojů\Shaders</Filter>
     </None>
-    <None Include="resources\basic.vert">
+    <None Include="resources\my.vert">
       <Filter>Soubory zdrojů\Shaders</Filter>
     </None>
-    <None Include="resources\basicFan.frag">
-      <Filter>Soubory zdrojů\Shaders</Filter>
-    </None>
-    <None Include="resources\basicFan.vert">
-      <Filter>Soubory zdrojů\Shaders</Filter>
-    </None>
-    <None Include="resources\basicChess.frag">
+    <None Include="resources\texture.frag">
       <Filter>Soubory zdrojů\Shaders</Filter>
     </None>
   </ItemGroup>

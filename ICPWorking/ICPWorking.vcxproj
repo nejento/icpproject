@@ -154,12 +154,10 @@
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="resources\basic.frag" />
-    <None Include="resources\basic.vert" />
-    <None Include="resources\basicChess.frag" />
-    <None Include="resources\basicChess.vert" />
-    <None Include="resources\basicFan.frag" />
-    <None Include="resources\basicFan.vert" />
+    <None Include="resources\my.frag" />
+    <None Include="resources\my.vert" />
+    <None Include="resources\texture.frag" />
+    <None Include="resources\texture.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
