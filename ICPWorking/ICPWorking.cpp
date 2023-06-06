@@ -623,7 +623,7 @@ int main()
 			// modify Model matrix and send to shaders
 			m_m = glm::scale(m_m, glm::vec3(2.0f));
 
-			// p�ed�n� do shaderu
+			// Předání do shaderu
 			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
 
 			// View matrix
@@ -638,7 +638,7 @@ int main()
 			// set camera pos for shaders
 			glUniform3f(glGetUniformLocation(prog_h, "camPos"), player_position.x, player_position.y, player_position.z);
 
-			// p�ed�n� do shaderu
+			// Předání do shaderu
 			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uV_m"), 1, GL_FALSE, glm::value_ptr(v_m));
 
 			// Use buffers
