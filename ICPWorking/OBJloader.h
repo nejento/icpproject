@@ -21,15 +21,14 @@ bool loadOBJ(
 	glm::vec3 scale
 );
 */
-/*
+
 bool loadOBJ(
-	const char* path,
-	std::vector <vertex>& out_vertices,
-	std::vector <GLuint>& indices,
-	glm::vec3 color,
-	glm::vec3 scale,
+	const char* path, 
+	std::vector <vertex>& out_vertices, 
+	std::vector <GLuint>& indices, 
+	glm::vec3 color, 
+	glm::vec3 scale, 
 	glm::vec3 coords
 );
-*/
 
 #endif

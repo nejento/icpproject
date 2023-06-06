@@ -6,6 +6,7 @@
 * - Přidat zvuk
 */
 
+// === Includes ===
 // C++ 
 #include <iostream>
 #include <chrono>
@@ -35,6 +36,11 @@
 #include <glm/ext.hpp>
 //#include <irrklang/irrKlang.h>
 
+// Other Header files
+#include "OBJloader.h"
+
+
+// === Headers ===
 void init_glew(void);
 void init_glfw(void);
 void error_callback(int error, const char* description);
@@ -55,11 +61,13 @@ void tex_setup(int index, int tex);
 void make_shader(std::string vertex_shader, std::string fragment_shader, GLuint* shader);
 void draw_textured(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix);
 
+/*
 struct vertex {
 	glm::vec3 position; // Vertex pos
 	glm::vec3 color; // Color
 	glm::vec3 normal; // Normal
 };
+*/
 
 // vertex with texture
 struct tex_vertex {
@@ -77,7 +85,6 @@ irrklang::ISoundEngine* engine = irrklang::createIrrKlangDevice();
 */
 
 void va_setup(int index);
-bool loadOBJ(const char* path, std::vector <vertex>& out_vertices, std::vector <GLuint>& indices, glm::vec3 color, glm::vec3 scale, glm::vec3 coords);
 
 glm::vec3 check_collision(float x, float z);
 std::array<bool, 3> check_objects_collisions(float x, float z);
@@ -87,6 +94,7 @@ void setup_objects();
 
 void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
 
+// === Globals ===
 typedef struct image_data {
 	cv::Point2f center;
 	cv::Mat frame;
@@ -130,18 +138,26 @@ int step_delay = 0;
 bool ouch_ready = true;
 int move_count = 0;
 
-// objects values
+// Object count (počet objektů)
 const int n_objects = 16;
+// VAO Storage
 GLuint VAO[n_objects];
+// VBO Storage
 GLuint VBO[n_objects];
+// EBO Storage
 GLuint EBO[n_objects];
+// Vertex Array Storage
 std::vector<vertex> vertex_array[n_objects];
+// Index Array Storage
 std::vector<GLuint> indices_array[n_objects];
+// Object colors
 glm::vec3 colors[n_objects];
+// Object scales
 glm::vec3 scales[n_objects];
+// Object coordinates
 glm::vec3 coordinates[n_objects];
 
-// objects with collisions
+// Cbjects with collisions
 struct coords {
 	float min_x;
 	float max_x;
@@ -154,6 +170,209 @@ coords objects_coords[n_col_obj];
 
 GLuint prog_h, prog_tex;
 
+// === Templated ===
+void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
+{
+	auto const src_str = [source]() {
+		switch (source)
+		{
+		case GL_DEBUG_SOURCE_API: return "API";
+		case GL_DEBUG_SOURCE_WINDOW_SYSTEM: return "WINDOW SYSTEM";
+		case GL_DEBUG_SOURCE_SHADER_COMPILER: return "SHADER COMPILER";
+		case GL_DEBUG_SOURCE_THIRD_PARTY: return "THIRD PARTY";
+		case GL_DEBUG_SOURCE_APPLICATION: return "APPLICATION";
+		case GL_DEBUG_SOURCE_OTHER: return "OTHER";
+		default: return "Unknown";
+		}
+	}();
+	auto const type_str = [type]() {
+		switch (type)
+		{
+		case GL_DEBUG_TYPE_ERROR: return "ERROR";
+		case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: return "DEPRECATED_BEHAVIOR";
+		case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR: return "UNDEFINED_BEHAVIOR";
+		case GL_DEBUG_TYPE_PORTABILITY: return "PORTABILITY";
+		case GL_DEBUG_TYPE_PERFORMANCE: return "PERFORMANCE";
+		case GL_DEBUG_TYPE_MARKER: return "MARKER";
+		case GL_DEBUG_TYPE_OTHER: return "OTHER";
+		default: return "Unknown";
+		}
+	}();
+	auto const severity_str = [severity]() {
+		switch (severity) {
+		case GL_DEBUG_SEVERITY_NOTIFICATION: return "NOTIFICATION";
+		case GL_DEBUG_SEVERITY_LOW: return "LOW";
+		case GL_DEBUG_SEVERITY_MEDIUM: return "MEDIUM";
+		case GL_DEBUG_SEVERITY_HIGH: return "HIGH";
+		default: return "Unknown";
+		}
+	}();
+	std::cout << "[GL CALLBACK]: " <<
+		"source = " << src_str <<
+		", type = " << type_str <<
+		", severity = " << severity_str <<
+		", ID = '" << id << '\'' <<
+		", message = '" << message << '\'' << std::endl;
+}
+
+//=== Templated: Čtení ze souboru ===
+std::string textFileRead(const std::string fn) {
+	std::ifstream file;
+	file.exceptions(std::ifstream::badbit);
+	std::stringstream ss;
+
+	file.open(fn);
+	if (file.is_open()) {
+		std::string content;
+		ss << file.rdbuf();
+	}
+	else {
+		std::cerr << "Error opening file: " << fn << std::endl;
+		exit(EXIT_FAILURE);
+	}
+	return std::move(ss.str());
+}
+
+//=== Templated: Vypisuje informace o shaderu ===
+std::string getShaderInfoLog(const GLuint obj) {
+	int infologLength = 0;
+	std::string s;
+	glGetShaderiv(obj, GL_INFO_LOG_LENGTH, &infologLength);
+	if (infologLength > 0) {
+		std::vector<char> v(infologLength);
+		glGetShaderInfoLog(obj, infologLength, NULL,
+			v.data());
+		s.assign(begin(v), end(v));
+	}
+	return s;
+}
+
+//=== Templated: Vypisuje informace o programu ===
+std::string getProgramInfoLog(const GLuint obj) {
+	int infologLength = 0;
+	std::string s;
+	glGetProgramiv(obj, GL_INFO_LOG_LENGTH, &infologLength);
+	if (infologLength > 0) {
+		std::vector<char> v(infologLength);
+		glGetProgramInfoLog(obj, infologLength, NULL,
+			v.data());
+		s.assign(begin(v), end(v));
+	}
+	return s;
+}
+
+//=== Templated: Uzavření a ukončení okna ===
+static void finalize(int code)
+{
+	// ...
+
+	// Close OpenGL window if opened and terminate GLFW  
+	if (globals.window)
+		glfwDestroyWindow(globals.window);
+	glfwTerminate();
+
+	exit(code);
+	// ...
+}
+
+//=== Templated: Zachytávání chyb ===
+void error_callback(int error, const char* description)
+{
+	std::cerr << "Error: " << description << std::endl;
+}
+
+//=== Templated: Inicializace GL extensions GLEW, použitelné PO vytvoření GL contextu ===
+void init_glew(void) {
+	//
+	// Initialize all valid GL extensions with GLEW.
+	// Usable AFTER creating GL context!
+	//
+	{
+		GLenum glew_ret;
+		glew_ret = glewInit();
+		if (glew_ret != GLEW_OK)
+		{
+			std::cerr << "WGLEW failed with error: " << glewGetErrorString(glew_ret) << std::endl;
+			exit(EXIT_FAILURE);
+		}
+		else
+		{
+			std::cout << "GLEW successfully initialized to version: " << glewGetString(GLEW_VERSION) << std::endl;
+		}
+		// Platform specific. (Change to GLXEW or ELGEW if necessary.)
+		glew_ret = wglewInit();
+		if (glew_ret != GLEW_OK)
+		{
+			std::cerr << "WGLEW failed with error: " << glewGetErrorString(glew_ret) << std::endl;
+			exit(EXIT_FAILURE);
+		}
+		else
+		{
+			std::cout << "WGLEW successfully initialized platform specific functions." << std::endl;
+		}
+	}
+}
+
+//=== Editable: Nastavení GLFW ===
+static void init_glfw(void)
+{
+	//
+	// GLFW init.
+	//
+
+	// set error callback first
+	glfwSetErrorCallback(error_callback);
+
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_POLYGON_SMOOTH);
+	glEnable(GL_LINE_SMOOTH);
+
+	// assume ALL objects are non-transparent 
+	glEnable(GL_CULL_FACE);
+
+
+	//initialize GLFW library
+	int glfw_ret = glfwInit();
+	if (!glfw_ret)
+	{
+		std::cerr << "GLFW init failed." << std::endl;
+		finalize(EXIT_FAILURE);
+	}
+
+	// Shader based, modern OpenGL (3.3 and higher)
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5); // Living on the edge!
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // only new functions
+	//glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE); // only old functions (for old tutorials etc.)
+
+	glfwWindowHint(GLFW_SAMPLES, 4); // 4x antialiasing
+	globals.window = glfwCreateWindow(800, 600, "Final Project Brož & Jacik", NULL, NULL);
+	if (!globals.window)
+	{
+		std::cerr << "GLFW window creation error." << std::endl;
+		finalize(EXIT_FAILURE);
+	}
+
+	// Get some GLFW info.
+	{
+		int major, minor, revision;
+
+		glfwGetVersion(&major, &minor, &revision);
+		std::cout << "Running GLFW " << major << '.' << minor << '.' << revision << std::endl;
+		std::cout << "Compiled against GLFW " << GLFW_VERSION_MAJOR << '.' << GLFW_VERSION_MINOR << '.' << GLFW_VERSION_REVISION << std::endl;
+	}
+
+	glfwMakeContextCurrent(globals.window);                                     // Set current window.
+	glfwGetFramebufferSize(globals.window, &globals.width, &globals.height);    // Get window size.
+	//glfwSwapInterval(0);                                                      // Set V-Sync OFF.
+	glfwSwapInterval(1);                                                        // Set V-Sync ON.
+
+
+	globals.app_start_time = glfwGetTime();                                     // Get start time.
+}
+
+
+// === Main === 
 int main()
 {
 
@@ -326,16 +545,11 @@ int main()
 	return (EXIT_SUCCESS);
 }
 
-void error_callback(int error, const char* description)
-{
-	std::cerr << "Error: " << description << std::endl;
-}
-
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 		finalize(EXIT_SUCCESS);
-	//glfwSetWindowShouldClose(window, GLFW_TRUE);
+		//glfwSetWindowShouldClose(window, GLFW_TRUE);
 	if (key == GLFW_KEY_W && action != GLFW_RELEASE)
 		std::cout << 'W';
 	if (key == GLFW_KEY_S && action != GLFW_RELEASE)
@@ -507,194 +721,6 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 	lastypos = ypos;
 }
 
-static void finalize(int code)
-{
-	// ...
-
-	// Close OpenGL window if opened and terminate GLFW  
-	if (globals.window)
-		glfwDestroyWindow(globals.window);
-	glfwTerminate();
-
-	exit(code);
-	// ...
-}
-
-static void init_glfw(void)
-{
-	//
-	// GLFW init.
-	//
-
-	// set error callback first
-	glfwSetErrorCallback(error_callback);
-
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_POLYGON_SMOOTH);
-	glEnable(GL_LINE_SMOOTH);
-
-	// assume ALL objects are non-transparent 
-	glEnable(GL_CULL_FACE);
-
-
-	//initialize GLFW library
-	int glfw_ret = glfwInit();
-	if (!glfw_ret)
-	{
-		std::cerr << "GLFW init failed." << std::endl;
-		finalize(EXIT_FAILURE);
-	}
-
-	// Shader based, modern OpenGL (3.3 and higher)
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // only new functions
-	//glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE); // only old functions (for old tutorials etc.)
-
-	glfwWindowHint(GLFW_SAMPLES, 4); // 4x antialiasing
-	globals.window = glfwCreateWindow(800, 600, "OpenGL context", NULL, NULL);
-	if (!globals.window)
-	{
-		std::cerr << "GLFW window creation error." << std::endl;
-		finalize(EXIT_FAILURE);
-	}
-
-	// Get some GLFW info.
-	{
-		int major, minor, revision;
-
-		glfwGetVersion(&major, &minor, &revision);
-		std::cout << "Running GLFW " << major << '.' << minor << '.' << revision << std::endl;
-		std::cout << "Compiled against GLFW " << GLFW_VERSION_MAJOR << '.' << GLFW_VERSION_MINOR << '.' << GLFW_VERSION_REVISION << std::endl;
-	}
-
-	glfwMakeContextCurrent(globals.window);                                        // Set current window.
-	glfwGetFramebufferSize(globals.window, &globals.width, &globals.height);    // Get window size.
-	//glfwSwapInterval(0);                                                        // Set V-Sync OFF.
-	glfwSwapInterval(1);                                                        // Set V-Sync ON.
-
-
-	globals.app_start_time = glfwGetTime();                                        // Get start time.
-}
-
-void init_glew(void) {
-	//
-	// Initialize all valid GL extensions with GLEW.
-	// Usable AFTER creating GL context!
-	//
-	{
-		GLenum glew_ret;
-		glew_ret = glewInit();
-		if (glew_ret != GLEW_OK)
-		{
-			std::cerr << "WGLEW failed with error: " << glewGetErrorString(glew_ret) << std::endl;
-			exit(EXIT_FAILURE);
-		}
-		else
-		{
-			std::cout << "GLEW successfully initialized to version: " << glewGetString(GLEW_VERSION) << std::endl;
-		}
-		// Platform specific. (Change to GLXEW or ELGEW if necessary.)
-		glew_ret = wglewInit();
-		if (glew_ret != GLEW_OK)
-		{
-			std::cerr << "WGLEW failed with error: " << glewGetErrorString(glew_ret) << std::endl;
-			exit(EXIT_FAILURE);
-		}
-		else
-		{
-			std::cout << "WGLEW successfully initialized platform specific functions." << std::endl;
-		}
-	}
-}
-
-void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
-{
-	auto const src_str = [source]() {
-		switch (source)
-		{
-		case GL_DEBUG_SOURCE_API: return "API";
-		case GL_DEBUG_SOURCE_WINDOW_SYSTEM: return "WINDOW SYSTEM";
-		case GL_DEBUG_SOURCE_SHADER_COMPILER: return "SHADER COMPILER";
-		case GL_DEBUG_SOURCE_THIRD_PARTY: return "THIRD PARTY";
-		case GL_DEBUG_SOURCE_APPLICATION: return "APPLICATION";
-		case GL_DEBUG_SOURCE_OTHER: return "OTHER";
-		default: return "Unknown";
-		}
-	}();
-	auto const type_str = [type]() {
-		switch (type)
-		{
-		case GL_DEBUG_TYPE_ERROR: return "ERROR";
-		case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: return "DEPRECATED_BEHAVIOR";
-		case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR: return "UNDEFINED_BEHAVIOR";
-		case GL_DEBUG_TYPE_PORTABILITY: return "PORTABILITY";
-		case GL_DEBUG_TYPE_PERFORMANCE: return "PERFORMANCE";
-		case GL_DEBUG_TYPE_MARKER: return "MARKER";
-		case GL_DEBUG_TYPE_OTHER: return "OTHER";
-		default: return "Unknown";
-		}
-	}();
-	auto const severity_str = [severity]() {
-		switch (severity) {
-		case GL_DEBUG_SEVERITY_NOTIFICATION: return "NOTIFICATION";
-		case GL_DEBUG_SEVERITY_LOW: return "LOW";
-		case GL_DEBUG_SEVERITY_MEDIUM: return "MEDIUM";
-		case GL_DEBUG_SEVERITY_HIGH: return "HIGH";
-		default: return "Unknown";
-		}
-	}();
-	std::cout << "[GL CALLBACK]: " <<
-		"source = " << src_str <<
-		", type = " << type_str <<
-		", severity = " << severity_str <<
-		", ID = '" << id << '\'' <<
-		", message = '" << message << '\'' << std::endl;
-}
-
-std::string textFileRead(const std::string fn) {
-	std::ifstream file;
-	file.exceptions(std::ifstream::badbit);
-	std::stringstream ss;
-
-	file.open(fn);
-	if (file.is_open()) {
-		std::string content;
-		ss << file.rdbuf();
-	}
-	else {
-		std::cerr << "Error opening file: " << fn << std::endl;
-		exit(EXIT_FAILURE);
-	}
-	return std::move(ss.str());
-}
-
-std::string getShaderInfoLog(const GLuint obj) {
-	int infologLength = 0;
-	std::string s;
-	glGetShaderiv(obj, GL_INFO_LOG_LENGTH, &infologLength);
-	if (infologLength > 0) {
-		std::vector<char> v(infologLength);
-		glGetShaderInfoLog(obj, infologLength, NULL,
-			v.data());
-		s.assign(begin(v), end(v));
-	}
-	return s;
-}
-
-std::string getProgramInfoLog(const GLuint obj) {
-	int infologLength = 0;
-	std::string s;
-	glGetProgramiv(obj, GL_INFO_LOG_LENGTH, &infologLength);
-	if (infologLength > 0) {
-		std::vector<char> v(infologLength);
-		glGetProgramInfoLog(obj, infologLength, NULL,
-			v.data());
-		s.assign(begin(v), end(v));
-	}
-	return s;
-}
-
 void va_setup(int index) {
 	// Generate the VAO and VBO
 	glGenVertexArrays(1, &VAO[index]);
@@ -726,86 +752,6 @@ void va_setup(int index) {
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-}
-
-bool loadOBJ(const char* path, std::vector <vertex>& out_vertices, std::vector <GLuint>& indices, glm::vec3 color, glm::vec3 scale, glm::vec3 coords) {
-	std::vector< unsigned int > vertexIndices, uvIndices, normalIndices;
-	std::vector< glm::vec3 > temp_vertices;
-	std::vector< glm::vec2 > temp_uvs;
-	std::vector< glm::vec3 > temp_normals;
-
-	out_vertices.clear();
-	indices.clear();
-
-	FILE* file;
-	fopen_s(&file, path, "r");
-	if (file == NULL) {
-		printf("Impossible to open the file !\n");
-		return false;
-	}
-	int index = 0;
-	while (1) {
-
-		char lineHeader[128];
-		int res = fscanf_s(file, "%s", lineHeader, array_cnt(lineHeader));
-		if (res == EOF) {
-			break;
-		}
-
-		if (strcmp(lineHeader, "v") == 0) {
-			glm::vec3 vertex;
-			fscanf_s(file, "%f %f %f\n", &vertex.x, &vertex.y, &vertex.z);
-			temp_vertices.push_back(vertex);
-		}
-		else if (strcmp(lineHeader, "vt") == 0) {
-			glm::vec2 uv;
-			fscanf_s(file, "%f %f\n", &uv.y, &uv.x);
-			temp_uvs.push_back(uv);
-		}
-		else if (strcmp(lineHeader, "vn") == 0) {
-			glm::vec3 normal;
-			fscanf_s(file, "%f %f %f\n", &normal.x, &normal.y, &normal.z);
-			temp_normals.push_back(normal);
-		}
-		else if (strcmp(lineHeader, "f") == 0) {
-			std::string vertex1, vertex2, vertex3;
-			unsigned int vertexIndex[3], uvIndex[3], normalIndex[3];
-			int matches = fscanf_s(file, "%d/%d/%d %d/%d/%d %d/%d/%d\n", &vertexIndex[0], &uvIndex[0], &normalIndex[0], &vertexIndex[1], &uvIndex[1], &normalIndex[1], &vertexIndex[2], &uvIndex[2], &normalIndex[2]);
-			if (matches != 9) {
-				printf("File can't be read by simple parser :( Try exporting with other options\n");
-				return false;
-			}
-			vertexIndices.push_back(vertexIndex[0]);
-			vertexIndices.push_back(vertexIndex[1]);
-			vertexIndices.push_back(vertexIndex[2]);
-
-			normalIndices.push_back(normalIndex[0]);
-			normalIndices.push_back(normalIndex[1]);
-			normalIndices.push_back(normalIndex[2]);
-
-			for (int j = 0; j < 6; j++)
-			{
-				indices.push_back(index + j);
-			}
-			index += 6;
-		}
-	}
-
-	// unroll from indirect to direct vertex specification
-	// sometimes not necessary, definitely not optimal
-
-	for (unsigned int u = 0; u < vertexIndices.size(); u++) {
-		unsigned int vertexIndex = vertexIndices[u];
-		glm::vec3 vertex = coords + (temp_vertices[vertexIndex - 1] * scale);
-
-		unsigned int normalIndex = normalIndices[u];
-		glm::vec3 normal = temp_normals[normalIndex - 1];
-
-		out_vertices.push_back({ vertex, color, normal });
-	}
-
-	fclose(file);
-	return true;
 }
 
 void setup_objects() {
