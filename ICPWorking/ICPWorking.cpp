@@ -43,9 +43,10 @@ void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum se
 
 GLuint PrepareVAO(std::vector<vertex> vertices, std::vector<GLuint> indices);
 
+GLuint gen_tex(std::string filepath);
 //void tex_setup(int index, int tex);
 void make_shader(std::string vertex_shader, std::string fragment_shader, GLuint* shader);
-//void draw_textured(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix);
+void draw_textured(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix);
 
 typedef struct s_globals {
 	GLFWwindow* window;
@@ -55,6 +56,7 @@ typedef struct s_globals {
 	double app_start_time;
 	cv::VideoCapture capture;
 	bool fullscreen;
+	double last_fps;
 	int x = 0;
 	int y = 0;
 } s_globals;
@@ -65,6 +67,12 @@ glm::vec4 color = { 1.0f, 1.0f, 1.0f, 0.0f };
 glm::vec3 cameraPosition(0.0f, 0.0f, 0.0f);
 glm::vec3 cameraFront(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUP(0.0f, 1.0f, 0.0f);
+
+// === Textures storage ===
+GLuint texture_id[4];
+// === VAO storage ===
+GLuint VAO_frog;
+ 
 double delta_t = 0; //how much time has passed
 
 GLuint prog_h, prog_tex;
@@ -448,6 +456,11 @@ int main()
 	std::string frag_shader_path_chess = "resources/basicChess.frag";
 	GLuint prog_h_chess = PrepareShaderProgram(vert_shader_path_chess, frag_shader_path_chess);
 
+	// frames and time
+	int frame_cnt = 0;
+	globals.last_fps = glfwGetTime();
+
+
 	// === Načítání objektů ===
 	std::vector<vertex> vertices_frog = {};
 	std::vector<GLuint> indices_frog = {};
@@ -457,7 +470,12 @@ int main()
 	glm::vec3 coords_frog = { -10.5, -0.5, 10.5 };
 	//Načtení objektu ze souboru
 	loadOBJ("resources/obj/Frog/20436_Frog_v1 textured.obj", vertices_frog, indices_frog, colors_frog, scale_frog, coords_frog);
-	GLuint VAO_frog = PrepareVAO(vertices_frog, indices_frog);
+	VAO_frog = PrepareVAO(vertices_frog, indices_frog);
+
+	texture_id[0] = gen_tex("resources/obj/Frog/20436_Frog_diff.jpg");
+
+	// set visible area
+	double last_frame = glfwGetTime();
 
 	/*
 	std::vector<vertex> vertices = {
@@ -472,6 +490,7 @@ int main()
 
 	//==================KRUH==================
 	//vygenerujte data pro kolecko uprostred obrazovky (triangle fan) z 100 000 vertexu
+	/*
 	std::vector<vertex> vertices_kruh = {};
 	std::vector<GLuint> indices_kruh = {};
 
@@ -490,16 +509,18 @@ int main()
 
 
 	GLuint VAO_kruh = PrepareVAO(vertices_kruh, indices_kruh);
+	*/
 
 	//==================SACHOVNICE==================
 
 	//vygenerujte data pro kolecko uprostred obrazovky (triangle fan) z 100 000 vertexu
+	/*
 	std::vector<vertex> vertices_chess = {};
 	std::vector<GLuint> indices_chess = {};
 	GenerateChessPattern(vertices_chess, indices_chess);
 	GLuint VAO_chess = PrepareVAO(vertices_chess, indices_chess);
-	// set visible area
-	double last_frame = glfwGetTime();
+	*/
+
 
 	//======================LOADED=MODEL=======================
 	/*
@@ -547,17 +568,56 @@ int main()
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+		{
+			glUseProgram(prog_h);
+
+			// Model Matrix
+			glm::mat4 m_m = glm::identity<glm::mat4>();
+
+			// modify Model matrix and send to shaders
+			m_m = glm::scale(m_m, glm::vec3(2.0f));
+
+			// předání do shaderu
+			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
+
+			// View Matrix
+			glm::mat4 view_m = glm::lookAt(
+				cameraPosition,               //from where
+				cameraPosition + cameraFront, //to where
+				cameraUP                      //UP direction
+			);
+
+			// set light pos in above player for shaders
+			glUniform3f(glGetUniformLocation(prog_h, "lightPos"), cameraPosition.x / 2, cameraPosition.y / 2 + 1.0f, cameraPosition.z / 2);
+
+			// set camera pos for shaders
+			glUniform3f(glGetUniformLocation(prog_h, "camPos"), cameraPosition.x, cameraPosition.y, cameraPosition.z);
+
+			// předání do shaderu
+			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uView_m"), 1, GL_FALSE, glm::value_ptr(view_m));
+
+			glBindVertexArray(VAO_frog);
+			glDrawElements(GL_TRIANGLES, indices_frog.size(), GL_UNSIGNED_INT, 0);
+
+			// Use buffers
+			/*
+			for (int i = 1; i < n_objects - 6; i++) {
+				glBindVertexArray(VAO[i]);
+				glDrawElements(GL_TRIANGLES, indices_array[i].size(), GL_UNSIGNED_INT, 0);
+			}
+			*/
+
+			// textured object draw
+			draw_textured(m_m, view_m, projectionMatrix);
+
+		}
+
 		// FPS counter
 		float current_frame = glfwGetTime();
 		delta_t = current_frame - last_frame;
 		last_frame = current_frame;
 
-		// View Matrix
-		glm::mat4 view_m = glm::lookAt(
-			cameraPosition,               //from where
-			cameraPosition + cameraFront, //to where
-			cameraUP                      //UP direction
-		);
+
 
 		//===Movement================
 
@@ -650,6 +710,17 @@ int main()
 		//Prohodit buffery k vykreslení, zaznamenat eventy
 		glfwSwapBuffers(globals.window); // prohodit buffery
 		glfwPollEvents();				 // zaznamenat eventy	
+
+		// frames a time
+		frame_cnt++;
+		double now = glfwGetTime();
+
+		// vyps�n� fps
+		if ((now - globals.last_fps) > 1) {
+			globals.last_fps = now;
+			std::cout << "FPS: " << frame_cnt << std::endl;
+			frame_cnt = 0;
+		}
 	}
 	std::cout << "Program ended." << '\n';
 }
@@ -767,6 +838,94 @@ GLuint PrepareVAO(std::vector<vertex> vertices, std::vector<GLuint> indices) {
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
 	return resultVAO;
+}
+
+GLuint gen_tex(std::string filepath)
+{
+	GLuint ID;
+	cv::Mat image = cv::imread(filepath);
+
+	// Generates an OpenGL texture object
+	glGenTextures(1, &ID);
+
+	// Assigns the texture to a Texture Unit
+	glBindTexture(GL_TEXTURE_2D, ID);
+
+	// Texture data alignment for transfer (single byte = basic, slow, but safe option; usually not necessary) 
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+	glHint(GL_TEXTURE_COMPRESSION_HINT, GL_NICEST);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image.cols, image.rows, 0, GL_BGR, GL_UNSIGNED_BYTE, image.data);
+	int compressed;
+	GLint internalformat, compressed_size;
+	glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_COMPRESSED_ARB, &compressed);
+	/* if the compression has been successful */
+	if (compressed == GL_TRUE)
+	{
+		glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &internalformat);
+		glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_COMPRESSED_IMAGE_SIZE_ARB, &compressed_size);
+		std::cout << "ORIGINAL: " << image.total() * image.elemSize() << " COMPRESSED: " << compressed_size << " INTERNAL FORMAT: " << internalformat << std::endl;
+	}
+
+	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+
+	// Configures the way the texture repeats
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+
+	glGenerateMipmap(GL_TEXTURE_2D);
+
+	// Unbinds the OpenGL Texture object so that it can't accidentally be modified
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	return ID;
+}
+
+void draw_textured(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix) {
+	glUseProgram(prog_tex);
+	glUniformMatrix4fv(glGetUniformLocation(prog_tex, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
+	glUniformMatrix4fv(glGetUniformLocation(prog_tex, "uView_m"), 1, GL_FALSE, glm::value_ptr(v_m));
+	glUniformMatrix4fv(glGetUniformLocation(prog_tex, "uProj_M"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+
+	// set light color for shader
+	glUniform4f(glGetUniformLocation(prog_tex, "lightColor"), 1.0f, 0.5f, 0.5f, 1.0f);
+	// set light pos in above player for shaders
+	glUniform3f(glGetUniformLocation(prog_tex, "lightPos"), cameraPosition.x / 2, cameraPosition.y / 2 + 1.0f, cameraPosition.z / 2);
+	// set camera pos for shaders
+	glUniform3f(glGetUniformLocation(prog_tex, "camPos"), cameraPosition.x, cameraPosition.y, cameraPosition.z);
+
+	//set texture unit
+	glActiveTexture(GL_TEXTURE0);
+
+	//send texture unit number to FS
+	glUniform1i(glGetUniformLocation(prog_tex, "tex0"), 0);
+
+	// draw object using VAO (Bind+DrawElements+Unbind)
+	/*
+	glBindVertexArray(VAO[0]);
+	glBindTexture(GL_TEXTURE_2D, texture_id[0]);
+	glDrawElements(GL_TRIANGLES, indices_array[0].size(), GL_UNSIGNED_INT, 0);
+
+	glBindVertexArray(VAO[13]);
+	glBindTexture(GL_TEXTURE_2D, texture_id[1]);
+	glDrawElements(GL_TRIANGLES, indices_array[13].size(), GL_UNSIGNED_INT, 0);
+
+	glBindVertexArray(VAO[14]);
+	glBindTexture(GL_TEXTURE_2D, texture_id[2]);
+	glDrawElements(GL_TRIANGLES, indices_array[14].size(), GL_UNSIGNED_INT, 0);
+
+	glBindVertexArray(VAO[15]);
+	glBindTexture(GL_TEXTURE_2D, texture_id[3]);
+	glDrawElements(GL_TRIANGLES, indices_array[15].size(), GL_UNSIGNED_INT, 0);
+	*/
+	glBindVertexArray(VAO_frog);
+	glBindTexture(GL_TEXTURE_2D, texture_id[0]);
+
+	glUseProgram(prog_h);
 }
 
 void GenerateChessPattern(std::vector<vertex>& vertices_chess, cvflann::lsh::Bucket& indices_chess)
