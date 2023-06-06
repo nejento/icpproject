@@ -16,12 +16,6 @@
     <Filter Include="Soubory zdrojů\Shaders">
       <UniqueIdentifier>{09b2e32c-b121-4efe-9e90-a09a5ce94905}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Soubory zdrojů\Obj">
-      <UniqueIdentifier>{4ba24b26-282d-44a9-8b34-adb06f720aa5}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Soubory zdrojů\Textures">
-      <UniqueIdentifier>{323a8914-8f0f-4426-979d-1434c541e47d}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ICPWorking.cpp">
@@ -61,39 +55,5 @@
     <None Include="resources\texture.frag">
       <Filter>Soubory zdrojů\Shaders</Filter>
     </None>
-  </ItemGroup>
-  <ItemGroup>
-    <Object Include="resources\obj\work_glove.obj">
-      <Filter>Soubory zdrojů\Obj</Filter>
-    </Object>
-    <Object Include="resources\obj\cube.obj">
-      <Filter>Soubory zdrojů\Obj</Filter>
-    </Object>
-    <Object Include="resources\obj\frog.obj">
-      <Filter>Soubory zdrojů\Obj</Filter>
-    </Object>
-    <Object Include="resources\obj\sphere.obj">
-      <Filter>Soubory zdrojů\Obj</Filter>
-    </Object>
-    <Object Include="resources\obj\teapot.obj">
-      <Filter>Soubory zdrojů\Obj</Filter>
-    </Object>
-    <Object Include="resources\obj\bunny_tri_vnt.obj">
-      <Filter>Soubory zdrojů\Obj</Filter>
-    </Object>
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="resources\tex\box.png">
-      <Filter>Soubory zdrojů\Textures</Filter>
-    </Image>
-    <Image Include="resources\tex\brick.png">
-      <Filter>Soubory zdrojů\Textures</Filter>
-    </Image>
-    <Image Include="resources\tex\concrete.png">
-      <Filter>Soubory zdrojů\Textures</Filter>
-    </Image>
-    <Image Include="resources\tex\missing.png">
-      <Filter>Soubory zdrojů\Textures</Filter>
-    </Image>
   </ItemGroup>
 </Project>
