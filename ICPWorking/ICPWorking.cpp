@@ -589,7 +589,7 @@ int main()
 	glViewport(0, 0, width, height);
 
 	// Načtení textur
-	texture_id[0] = gen_tex("resources/textures/box.png");
+	texture_id[0] = gen_tex("resources/textures/grass.jpg");
 	texture_id[1] = gen_tex("resources/textures/concrete.png");
 	texture_id[2] = gen_tex("resources/textures/brick_wall_texture.jpg");
 	texture_id[3] = gen_tex("resources/textures/missing.png");
@@ -821,12 +821,12 @@ void setup_objects() {
 
 	// textured 0
 	assets[0].type = asset_type_texture;
-	assets[0].tex_vertex_array.push_back({ {-10.0f, -0.9f, -10.0f}, glm::vec2(-10.0f, -10.0f), up });
-	assets[0].tex_vertex_array.push_back({ { -10.0f, -0.9f, 10.0f}, glm::vec2(-10.0f, 10.0f), up });
-	assets[0].tex_vertex_array.push_back({ { 10.0f, -0.9f, 10.0f}, glm::vec2(10.0f, 10.0f), up });
-	assets[0].tex_vertex_array.push_back({ {10.0f, -0.9f, 10.0f}, glm::vec2(10.0f, 10.0f), up });
-	assets[0].tex_vertex_array.push_back({ {10.0f, -0.9f, -10.0f}, glm::vec2(10.0f, -10.0f), up });
-	assets[0].tex_vertex_array.push_back({ {-10.0f, -0.9f, -10.0f}, glm::vec2(-10.0f, -10.0f), up });
+	assets[0].tex_vertex_array.push_back({ {-10.0f, -0.9f, -10.0f}, glm::vec2(-5.0f, -5.0f), up });
+	assets[0].tex_vertex_array.push_back({ { -10.0f, -0.9f, 10.0f}, glm::vec2(-5.0f, 5.0f), up });
+	assets[0].tex_vertex_array.push_back({ { 10.0f, -0.9f, 10.0f}, glm::vec2(5.0f, 5.0f), up });
+	assets[0].tex_vertex_array.push_back({ {10.0f, -0.9f, 10.0f}, glm::vec2(5.0f, 5.0f), up });
+	assets[0].tex_vertex_array.push_back({ {10.0f, -0.9f, -10.0f}, glm::vec2(5.0f, -5.0f), up });
+	assets[0].tex_vertex_array.push_back({ {-10.0f, -0.9f, -10.0f}, glm::vec2(-5.0f, -5.0f), up });
 	assets[0].indices_array = { 0, 1, 2 , 3, 4, 5};
 	PrepareVAO(0);
 
