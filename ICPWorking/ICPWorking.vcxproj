@@ -158,6 +158,8 @@
     <None Include="resources\my.vert" />
     <None Include="resources\texture.frag" />
     <None Include="resources\texture.vert" />
+    <None Include="resources\transparency.frag" />
+    <None Include="resources\transparency.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
