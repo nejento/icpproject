@@ -1167,7 +1167,7 @@ void draw_textured(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix) {
 
 void hande_player_movement()
 {
-	float speed = 3.0f * delta_t;
+	float speed = 35.0f * delta_t;
 
 	if (move_right_flag) {
 		glm::vec3 xz = player_position + speed * glm::normalize(glm::cross(looking_position, up));
@@ -1178,13 +1178,12 @@ void hande_player_movement()
 		player_position = check_collision(xz.x, xz.z);
 	}
 	if (move_forward_flag) {
-		float x = player_position.x + looking_position.x * speed;
-		float z = player_position.z + looking_position.z * speed;
-		player_position = check_collision(x, z);
+		glm::vec3 xz = player_position + speed * glm::normalize(looking_position);
+
+		player_position = check_collision(xz.x, xz.z);
 	}
 	if (move_backward_flag) {
-		float x = player_position.x - looking_position.x * speed;
-		float z = player_position.z - looking_position.z * speed;
-		player_position = check_collision(x, z);
+		glm::vec3 xz = player_position - speed * glm::normalize(looking_position);
+		player_position = check_collision(xz.x, xz.z);
 	}
 }
