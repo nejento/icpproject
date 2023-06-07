@@ -609,7 +609,7 @@ int main()
 	texture_id[1] = gen_tex("resources/textures/concrete.png");
 	texture_id[2] = gen_tex("resources/textures/brick.png");
 	texture_id[3] = gen_tex("resources/textures/missing.png");
-	texture_id[4] = gen_tex("resources/textures/glove.jpg");
+	texture_id[4] = gen_tex("resources/textures/work_glove.png");
 
 	// === Main Loop ===
 	while (!glfwWindowShouldClose(globals.window)) {
