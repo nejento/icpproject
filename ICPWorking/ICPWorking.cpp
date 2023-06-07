@@ -657,9 +657,11 @@ int main()
 
 			//chasing ball
 
-			float ball_speed = 0.05;
+			
+			float ball_speed = 8.0f * delta_t;
 			glm::mat4 temp = m_m;
-			glm::vec3 direction_to_player = player_position*0.5f - ball_position;
+			glm::vec3 target_offset = glm::vec3(0,-0.175f,0);
+			glm::vec3 direction_to_player = player_position*0.5f - ball_position + target_offset;
 			direction_to_player = glm::normalize(direction_to_player);
 			ball_position = ball_position + direction_to_player * ball_speed;
 			//bal
@@ -942,7 +944,7 @@ void setup_objects() {
 	//asset_type_texture
 	assets[index].type = asset_type_color;
 	assets[index].color = { 1, 1, 1 };
-	assets[index].scale = { 2, 2, 2 };
+	assets[index].scale = { 0.2f, 0.2f, 0.2f };
 	assets[index].coord = { 0, 0, 0 };
 	loadOBJ("resources/obj/mic.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
 	/*for (int i = 0; i < (int)(assets[index].vertex_array.size()); i++)
