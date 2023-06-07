@@ -41,6 +41,7 @@ void init_glew(void);
 void init_glfw(void);
 void error_callback(int error, const char* description);
 void finalize(int code);
+void hande_player_movement();
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
@@ -404,6 +405,16 @@ static void init_glfw(void)
 * @param: mods - bit field describing which modifier keys were held down
 * @return: none
 */
+
+
+bool move_left_flag = false;
+bool move_right_flag = false;
+bool move_forward_flag = false;
+bool move_backward_flag = false;
+
+float delta_t = 0; // time between frames used for movement calculation
+float last_frame = 0; // time of the last frame rendered
+
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
@@ -436,6 +447,27 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	}
 	float speed = 0.3f;
 
+	if (key == GLFW_KEY_W && action == GLFW_PRESS)
+		move_forward_flag = true;
+	if (key == GLFW_KEY_S && action == GLFW_PRESS)
+		move_backward_flag = true;
+	if (key == GLFW_KEY_A && action == GLFW_PRESS)
+		move_left_flag = true;
+	if (key == GLFW_KEY_D && action == GLFW_PRESS) {
+		move_right_flag = true;
+	}
+
+	if (key == GLFW_KEY_W && action == GLFW_RELEASE)
+		move_forward_flag = false;
+	if (key == GLFW_KEY_S && action == GLFW_RELEASE)
+		move_backward_flag = false;
+	if (key == GLFW_KEY_A && action == GLFW_RELEASE)
+		move_left_flag = false;
+	if (key == GLFW_KEY_D && action == GLFW_RELEASE) {
+		move_right_flag = false;
+	}
+
+	/*
 	if ((glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) || (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)) {
 		glm::vec3 xz = player_position + speed * glm::normalize(glm::cross(looking_position, up));
 		player_position = check_collision(xz.x, xz.z);
@@ -454,6 +486,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		float z = player_position.z - looking_position.z * speed;
 		player_position = check_collision(x, z);
 	}
+	*/
 	std::cout << "Player position: " << player_position.x << " " << player_position.y << " " << player_position.z << " " << std::endl;
 }
 
@@ -598,6 +631,10 @@ int main()
 	// === Main Loop ===
 	while (!glfwWindowShouldClose(globals.window)) {
 
+		float current_frame = glfwGetTime();
+		delta_t = current_frame - last_frame;
+		last_frame = current_frame;
+
 		glm::mat4 projectionMatrix = glm::perspective(
 			glm::radians(globals.fov), // The vertical Field of View, in radians: the amount of "zoom". Think "camera lens". Usually between 90� (extra wide) and 30� (quite zoomed in)
 			ratio,			           // Aspect Ratio. Depends on the size of your window.
@@ -610,6 +647,8 @@ int main()
 
 		// set light color for shader
 		glUniform4f(glGetUniformLocation(prog_h, "lightColor"), 1.0f, 1.0f, 1.0f, 1.0f);
+
+		hande_player_movement(); //changing the movment of the player based on movement flags
 
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -684,7 +723,7 @@ int main()
 			draw_textured(m_m, v_m, projectionMatrix);
 
 		}
-		// Prohodit buffery k vykreslen� a na��t�n�, zaznamenat eventy
+		// swap buffers for rendering, catch and react to events
 		glfwSwapBuffers(globals.window);
 		glfwPollEvents();
 
@@ -692,7 +731,7 @@ int main()
 		frame_cnt++;
 		double now = glfwGetTime();
 
-		// vyps�n� fps
+		// display fps
 		if ((now - globals.last_fps) > 1) {
 			globals.last_fps = now;
 			std::cout << "FPS: " << frame_cnt << std::endl;
@@ -1123,4 +1162,28 @@ void draw_textured(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix) {
 	glDrawElements(GL_TRIANGLES, assets[15].indices_array.size(), GL_UNSIGNED_INT, 0);
 
 	glUseProgram(prog_h);
+}
+
+void hande_player_movement()
+{
+	float speed = 3.0f * delta_t;
+
+	if (move_right_flag) {
+		glm::vec3 xz = player_position + speed * glm::normalize(glm::cross(looking_position, up));
+		player_position = check_collision(xz.x, xz.z);
+	}
+	if (move_left_flag) {
+		glm::vec3 xz = player_position - speed * glm::normalize(glm::cross(looking_position, up));
+		player_position = check_collision(xz.x, xz.z);
+	}
+	if (move_forward_flag) {
+		float x = player_position.x + looking_position.x * speed;
+		float z = player_position.z + looking_position.z * speed;
+		player_position = check_collision(x, z);
+	}
+	if (move_backward_flag) {
+		float x = player_position.x - looking_position.x * speed;
+		float z = player_position.z - looking_position.z * speed;
+		player_position = check_collision(x, z);
+	}
 }
