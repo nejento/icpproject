@@ -65,6 +65,7 @@ GLuint PrepareVAO(int index);
 GLuint gen_tex(std::string filepath);
 void make_shader(std::string vertex_shader, std::string fragment_shader, GLuint* shader);
 void draw_textured(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix);
+void draw_transparent(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix);
 
 glm::vec3 check_collision(float x, float z);
 std::array<bool, 3> check_objects_collisions(float x, float z);
@@ -153,7 +154,7 @@ struct asset {
 	glm::vec3 scale;							// Scale
 	glm::vec3 coord;							// Coordinates
 };
-const int n_assets = 16; // Počet inicializovaných objektů
+const int n_assets = 17; // Počet inicializovaných objektů
 asset assets[n_assets];  // Pole inicializovaných objektů
 
 // Textures
@@ -170,7 +171,7 @@ const int n_col_obj = 9;
 std::vector<vertex> col_obj[n_col_obj];
 coords objects_coords[n_col_obj];
 
-GLuint prog_h, prog_tex;
+GLuint prog_h, prog_tex, prog_transp;
 
 
 // === Templated ===
@@ -333,6 +334,8 @@ static void init_glfw(void)
 	// assume ALL objects are non-transparent 
 	glEnable(GL_CULL_FACE);
 
+	// Transparency
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	//initialize GLFW library
 	int glfw_ret = glfwInit();
@@ -554,8 +557,12 @@ int main()
 	make_shader("resources/my.vert", "resources/my.frag", &prog_h);
 	glUseProgram(prog_h);
 
+	std::cout << "TRANSPARENCY SHADER" << '\n';
+	make_shader("resources/transparency.vert", "resources/transparency.frag", &prog_transp);
+
 	std::cout << "TEXTURE SHADER" << '\n';
 	make_shader("resources/texture.vert", "resources/texture.frag", &prog_tex);
+
 
 	// load objects
 	setup_objects();
@@ -639,10 +646,13 @@ int main()
 			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uV_m"), 1, GL_FALSE, glm::value_ptr(v_m));
 
 			// Use buffers
+			// Objekty 1 - 5 jsou statické stěny a prostřední žlutý čtverec
 			for (int i = 1; i < n_assets - 6; i++) {
 				glBindVertexArray(assets[i].VAO);
 				glDrawElements(GL_TRIANGLES, assets[i].indices_array.size(), GL_UNSIGNED_INT, 0);
 			}
+
+
 
 			// move sphere (sun)
 			glm::mat4 temp = m_m;
@@ -691,6 +701,8 @@ int main()
 
 			// textured object draw
 			draw_textured(m_m, v_m, projectionMatrix);
+			// transparent object draw
+			draw_transparent(m_m, v_m, projectionMatrix);
 
 		}
 		// swap buffers for rendering, catch and react to events
@@ -949,9 +961,13 @@ void setup_objects() {
 	loadOBJ("resources/obj/teapot.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
 	PrepareVAO(12);
 
-
-
-
+	index = 16;
+	assets[index].type = asset_type_color;
+	assets[index].color = { 0.1, 1.0, 0.1 };
+	assets[index].scale = { 0.1, 0.1, 0.1 };
+	assets[index].coord = { -9.5, 0.0, -9.5 };
+	loadOBJ("resources/obj/teapot.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+	PrepareVAO(16);
 
 	//choose objects with collisions
 	int j = 0;
@@ -1153,6 +1169,38 @@ void draw_textured(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix) {
 	glBindVertexArray(assets[10].VAO);
 	glBindTexture(GL_TEXTURE_2D, texture_id[4]);
 	glDrawElements(GL_TRIANGLES, assets[10].indices_array.size(), GL_UNSIGNED_INT, 0);
+
+	glUseProgram(prog_h);
+}
+
+void draw_transparent(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix) {
+	glUseProgram(prog_transp);
+
+	glEnable(GL_BLEND);			// enable blending
+	glDisable(GL_CULL_FACE);	// no polygon removal
+	glDepthMask(GL_FALSE);		// set Z to read-only
+
+	glUniformMatrix4fv(glGetUniformLocation(prog_transp, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
+	glUniformMatrix4fv(glGetUniformLocation(prog_transp, "uV_m"), 1, GL_FALSE, glm::value_ptr(v_m));
+	glUniformMatrix4fv(glGetUniformLocation(prog_transp, "uP_m"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+
+	// set light color for shader
+	glUniform4f(glGetUniformLocation(prog_transp, "lightColor"), 1.0f, 0.5f, 0.5f, 1.0f);
+	// set light pos in above player for shaders
+	glUniform3f(glGetUniformLocation(prog_transp, "lightPos"), player_position.x / 2, player_position.y / 2 + 1.0f, player_position.z / 2);
+	// set camera pos for shaders
+	glUniform3f(glGetUniformLocation(prog_transp, "camPos"), player_position.x, player_position.y, player_position.z);
+	// set transparency for shaders
+	glUniform1f(glGetUniformLocation(prog_transp, "transparency"), 0.5f);
+
+
+	glBindVertexArray(assets[16].VAO);
+	glDrawElements(GL_TRIANGLES, assets[16].indices_array.size(), GL_UNSIGNED_INT, 0);
+
+
+	glDisable(GL_BLEND);
+	glEnable(GL_CULL_FACE);
+	glDepthMask(GL_TRUE);
 
 	glUseProgram(prog_h);
 }
