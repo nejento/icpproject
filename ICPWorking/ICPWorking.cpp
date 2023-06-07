@@ -42,7 +42,6 @@ void init_glfw(void);
 void error_callback(int error, const char* description);
 void finalize(int code);
 void update_player_position();
-void update_glove_position();
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
@@ -632,7 +631,6 @@ int main()
 		glUniform4f(glGetUniformLocation(prog_h, "lightColor"), 1.0f, 1.0f, 1.0f, 1.0f);
 
 		update_player_position(); //changing the movement of the player based on movement flags
-		update_glove_position(); //chaning glove position based on the player potition and rotation
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -1185,8 +1183,4 @@ void update_player_position()
 		glm::vec3 xz = player_position - speed * glm::normalize(looking_position);
 		player_position = check_collision(xz.x, xz.z);
 	}
-}
-
-void update_glove_position()
-{
 }
