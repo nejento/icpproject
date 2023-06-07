@@ -678,20 +678,18 @@ int main()
 
 			// rotate glove
 			temp = m_m;
-
-			glm::vec3 gloveOffset = glm::vec3(0.0f, -0.5f, -2.0f);
-
-			glm::vec3 player_direction = (player_position + looking_position) * 0.5f +gloveOffset;
-			m_m = glm::translate(m_m, player_direction);
-			m_m = m_m = glm::rotate(m_m, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-
-			glm::vec3 cross = glm::cross(glm::vec3(0,1,0), looking_position);
-			//m_m = glm::rotate(m_m, 90.0f, cross);
-
-			//
-
 			
-			//m_m = glm::rotate(m_m, glm::radians(0.0f * (float)glfwGetTime()), glm::vec3(0.0f, 1.0f, 0.0f));
+			glm::vec3 player_direction = (player_position + looking_position) * 0.5f;
+			m_m = glm::translate(m_m, player_direction); // move to the position of the player (camera)
+			m_m = m_m = glm::rotate(m_m, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));//rotate so the palm of the hand is facing down
+			
+			float glove_angle = Yaw-90;
+			m_m = m_m = glm::rotate(m_m, glm::radians(glove_angle), glm::vec3(0.0f, 0.0f, 1.0f)); //rotate the glove so it matches the direction the camera faces
+
+
+			glm::vec3 gloveOffset = glm::vec3(0.01f, -2, 0.5f);
+			m_m = glm::translate(m_m, gloveOffset); //apply offset to put the glove to the right position relative to the camera
+			
 			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
 			glBindVertexArray(assets[11].VAO);
 			glDrawElements(GL_TRIANGLES, assets[11].indices_array.size(), GL_UNSIGNED_INT, 0);
