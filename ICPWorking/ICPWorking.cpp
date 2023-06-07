@@ -662,6 +662,7 @@ int main()
 			glDrawElements(GL_TRIANGLES, assets[10].indices_array.size(), GL_UNSIGNED_INT, 0);
 			m_m = temp;
 
+
 			// rotate glove
 			temp = m_m;
 			
@@ -931,18 +932,18 @@ void setup_objects() {
 
 	index = 10;
 	//asset_type_texture
-	assets[index].type = asset_type_texture;
+	assets[index].type = asset_type_color;
 	assets[index].color = { 1, 1, 1 };
 	assets[index].scale = { 2, 2, 2 };
 	assets[index].coord = { 0, 15, 0 };
 	loadOBJ("resources/obj/mic.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
-	for (int i = 0; i < (int)(assets[index].vertex_array.size()); i++)
+	/*for (int i = 0; i < (int)(assets[index].vertex_array.size()); i++)
 	{
 		assets[index].tex_vertex_array.push_back({assets[index].vertex_array[i].position, assets[index].vertex_array[i].texCoor});
-	}
-
-	std::cout << "TEX_VERTEX_COUNT:" << (int)(assets[index].tex_vertex_array.size());
-	
+		std::cout << "\n Vertex: " << "x: " << assets[index].vertex_array[i].position.x << "y: " << assets[index].vertex_array[i].position.y << "z: " << assets[index].vertex_array[i].position.z;
+		std::cout << "\n UV: " << "x: " << assets[index].vertex_array[i].texCoor.x << "y: " << assets[index].vertex_array[i].texCoor.y ;
+		std::cout << "\n tex_vertex_array: " << "x: " << assets[index].vertex_array[i].texCoor.x << "y: " << assets[index].vertex_array[i].texCoor.y;
+	}*/
 	PrepareVAO(10);
 
 	index = 11;
@@ -1052,7 +1053,7 @@ GLuint PrepareVAO(int index) {
 		// Bind EBO, set type GL_ELEMENT_ARRAY_BUFFER
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, assets[index].EBO);
 		// Fill-in data into the EBO
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, assets[0].indices_array.size() * sizeof(GLuint), assets[0].indices_array.data(), GL_DYNAMIC_DRAW);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, assets[index].indices_array.size() * sizeof(GLuint), assets[index].indices_array.data(), GL_DYNAMIC_DRAW);
 		// Set Vertex Attribute to explain OpenGL how to interpret the VBO
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(tex_vertex), (void*)(0 + offsetof(tex_vertex, position)));
 		// Enable the Vertex Attribute 0 = position
@@ -1166,9 +1167,9 @@ void draw_textured(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix) {
 	glBindTexture(GL_TEXTURE_2D, texture_id[3]);
 	glDrawElements(GL_TRIANGLES, assets[15].indices_array.size(), GL_UNSIGNED_INT, 0);
 
-	glBindVertexArray(assets[10].VAO);
+	/*glBindVertexArray(assets[10].VAO);
 	glBindTexture(GL_TEXTURE_2D, texture_id[4]);
-	glDrawElements(GL_TRIANGLES, assets[10].indices_array.size(), GL_UNSIGNED_INT, 0);
+	glDrawElements(GL_TRIANGLES, assets[10].indices_array.size(), GL_UNSIGNED_INT, 0);*/
 
 	glUseProgram(prog_h);
 }
