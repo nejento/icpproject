@@ -117,26 +117,6 @@ bool ouch_ready = true;
 int move_count = 0;
 
 
-//=== Objects storage ===
-// Object count (počet objektů)
-const int n_objects = 16;
-// VAO Storage
-GLuint VAO[n_objects];
-// VBO Storage
-GLuint VBO[n_objects];
-// EBO Storage
-GLuint EBO[n_objects];
-// Vertex Array Storage
-std::vector<vertex> vertex_array[n_objects];
-// Index Array Storage
-std::vector<GLuint> indices_array[n_objects];
-// Object colors
-glm::vec3 colors[n_objects];
-// Object scales
-glm::vec3 scales[n_objects];
-// Object coordinates
-glm::vec3 coordinates[n_objects];
-
 // === Asset Storage ===
 // Vertex with color
 /*
@@ -682,7 +662,7 @@ int main()
 			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uV_m"), 1, GL_FALSE, glm::value_ptr(v_m));
 
 			// Use buffers
-			for (int i = 1; i < n_objects - 6; i++) {
+			for (int i = 1; i < n_assets - 6; i++) {
 				glBindVertexArray(assets[i].VAO);
 				glDrawElements(GL_TRIANGLES, assets[i].indices_array.size(), GL_UNSIGNED_INT, 0);
 			}
