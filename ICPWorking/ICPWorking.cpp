@@ -848,9 +848,8 @@ void setup_objects() {
 	assets[14].tex_vertex_array.push_back({ { 11.0f, 9.0, 11.0f }, glm::vec2(1.0f, 1.0f), up });
 	assets[14].tex_vertex_array.push_back({ { 11.0f, 9.0f, 11.0f}, glm::vec2(1.0f, 1.0f), up });
 	assets[14].tex_vertex_array.push_back({ { 11.0f, -1.0f, 11.0f}, glm::vec2(1.0f, -1.0f), up });
-	assets[14].tex_vertex_array.push_back({ { -11.0f, -1.0, 11.0f }, glm::vec2(-1.0f, -1.0f), up });
+	assets[14].tex_vertex_array.push_back({ { -11.0f, -1.0f, 11.0f }, glm::vec2(-1.0f, -1.0f), up});
 	assets[14].indices_array = { 0, 1, 2, 3, 4, 5};
-
 
 	PrepareVAO(14);
 
@@ -945,7 +944,7 @@ void setup_objects() {
 	assets[index].type = asset_type_color;
 	assets[index].color = { 1, 1, 1 };
 	assets[index].scale = { 2, 2, 2 };
-	assets[index].coord = { -20, 15, -20 };
+	assets[index].coord = { 0, 15, 0 };
 	loadOBJ("resources/obj/sphere.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
 	PrepareVAO(10);
 

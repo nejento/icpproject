@@ -268,10 +268,18 @@ bool loadOBJ(const char* path, std::vector <vertex>& out_vertices, std::vector <
 		unsigned int vertexIndex = vertexIndices[u];
 		glm::vec3 vertex = coords + (temp_vertices[vertexIndex - 1] * scale);
 
+
+
 		unsigned int normalIndex = normalIndices[u];
 		glm::vec3 normal = temp_normals[normalIndex - 1];
 
-		out_vertices.push_back({ vertex, color, normal });
+		if ((int)(temp_uvs.size()) == (int)(vertexIndices.size())){
+			glm::vec2 texCoor = (temp_uvs[vertexIndex - 1]);
+			out_vertices.push_back({ vertex, color, normal, texCoor });
+		}else{
+			out_vertices.push_back({ vertex, color, normal});
+		}
+		
 	}
 
 	fclose(file);
