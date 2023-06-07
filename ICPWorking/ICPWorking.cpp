@@ -648,16 +648,13 @@ int main()
 
 			// Use buffers
 			// Objekty 1 - 5 jsou statické stěny a prostřední žlutý čtverec
-			for (int i = 1; i < n_assets - 6; i++) {
+			for (int i = 1; i < 10 ; i++) {
 				glBindVertexArray(assets[i].VAO);
 				glDrawElements(GL_TRIANGLES, assets[i].indices_array.size(), GL_UNSIGNED_INT, 0);
 			}
 
 
-
-			//chasing ball
-
-			
+			//chasing ball			
 			float ball_speed = 8.0f * delta_t;
 			glm::mat4 temp = m_m;
 			glm::vec3 target_offset = glm::vec3(0,-0.175f,0);
@@ -947,13 +944,6 @@ void setup_objects() {
 	assets[index].scale = { 0.2f, 0.2f, 0.2f };
 	assets[index].coord = { 0, 0, 0 };
 	loadOBJ("resources/obj/mic.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
-	/*for (int i = 0; i < (int)(assets[index].vertex_array.size()); i++)
-	{
-		assets[index].tex_vertex_array.push_back({assets[index].vertex_array[i].position, assets[index].vertex_array[i].texCoor});
-		std::cout << "\n Vertex: " << "x: " << assets[index].vertex_array[i].position.x << "y: " << assets[index].vertex_array[i].position.y << "z: " << assets[index].vertex_array[i].position.z;
-		std::cout << "\n UV: " << "x: " << assets[index].vertex_array[i].texCoor.x << "y: " << assets[index].vertex_array[i].texCoor.y ;
-		std::cout << "\n tex_vertex_array: " << "x: " << assets[index].vertex_array[i].texCoor.x << "y: " << assets[index].vertex_array[i].texCoor.y;
-	}*/
 	PrepareVAO(10);
 
 	index = 11;
