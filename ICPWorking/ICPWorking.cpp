@@ -41,7 +41,8 @@ void init_glew(void);
 void init_glfw(void);
 void error_callback(int error, const char* description);
 void finalize(int code);
-void hande_player_movement();
+void update_player_position();
+void update_glove_position();
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
@@ -629,8 +630,8 @@ int main()
 		// set light color for shader
 		glUniform4f(glGetUniformLocation(prog_h, "lightColor"), 1.0f, 1.0f, 1.0f, 1.0f);
 
-		hande_player_movement(); //changing the movment of the player based on movement flags
-
+		update_player_position(); //changing the movement of the player based on movement flags
+		update_glove_position(); //chaning glove position based on the player potition and rotation
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -675,9 +676,22 @@ int main()
 			glDrawElements(GL_TRIANGLES, assets[10].indices_array.size(), GL_UNSIGNED_INT, 0);
 			m_m = temp;
 
-			// rotate teapot
+			// rotate glove
 			temp = m_m;
-			m_m = glm::rotate(m_m, glm::radians(20.0f * (float)glfwGetTime()), glm::vec3(0.0f, 1.0f, 0.0f));
+
+			glm::vec3 gloveOffset = glm::vec3(0.0f, -0.5f, -2.0f);
+
+			glm::vec3 player_direction = (player_position + looking_position) * 0.5f +gloveOffset;
+			m_m = glm::translate(m_m, player_direction);
+			m_m = m_m = glm::rotate(m_m, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+
+			glm::vec3 cross = glm::cross(glm::vec3(0,1,0), looking_position);
+			//m_m = glm::rotate(m_m, 90.0f, cross);
+
+			//
+
+			
+			//m_m = glm::rotate(m_m, glm::radians(0.0f * (float)glfwGetTime()), glm::vec3(0.0f, 1.0f, 0.0f));
 			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
 			glBindVertexArray(assets[11].VAO);
 			glDrawElements(GL_TRIANGLES, assets[11].indices_array.size(), GL_UNSIGNED_INT, 0);
@@ -932,8 +946,8 @@ void setup_objects() {
 	index = 11;
 	assets[index].type = asset_type_color;
 	assets[index].color = { 1, 0.1, 0.1 };
-	assets[index].scale = { 1.1, 1.1, 1.1 };
-	assets[index].coord = { 7, 3, 7 };
+	assets[index].scale = { 0.001, 0.001, 0.001 };
+	assets[index].coord = { 0, 0, 0 };
 	loadOBJ("resources/obj/work_glove.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
 	PrepareVAO(11);
 
@@ -1145,7 +1159,7 @@ void draw_textured(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix) {
 	glUseProgram(prog_h);
 }
 
-void hande_player_movement()
+void update_player_position()
 {
 	float speed = 35.0f * delta_t;
 
@@ -1166,4 +1180,8 @@ void hande_player_movement()
 		glm::vec3 xz = player_position - speed * glm::normalize(looking_position);
 		player_position = check_collision(xz.x, xz.z);
 	}
+}
+
+void update_glove_position()
+{
 }
