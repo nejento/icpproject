@@ -606,7 +606,7 @@ int main()
 	// Načtení textur
 	texture_id[0] = gen_tex("resources/textures/box.png");
 	texture_id[1] = gen_tex("resources/textures/concrete.png");
-	texture_id[2] = gen_tex("resources/textures/brick.png");
+	texture_id[2] = gen_tex("resources/textures/brick_wall_texture.jpg");
 	texture_id[3] = gen_tex("resources/textures/missing.png");
 	texture_id[4] = gen_tex("resources/textures/work_glove.png");
 
@@ -824,10 +824,13 @@ void setup_objects() {
 
 	// textured 0
 	assets[0].type = asset_type_texture;
-	assets[0].tex_vertex_array.push_back({ {-10.0f, -1.0f, -10.0f}, glm::vec2(-10.0f, -10.0f), up });
-	assets[0].tex_vertex_array.push_back({ { -10.0f, -1.0f, 10.0f}, glm::vec2(-10.0f, 10.0f), up });
-	assets[0].tex_vertex_array.push_back({ { 0.0f, -1.0f, 0.0f}, glm::vec2(0.0f, 0.0f), up });
-	assets[0].indices_array = { 0, 1, 2 };
+	assets[0].tex_vertex_array.push_back({ {-10.0f, -0.9f, -10.0f}, glm::vec2(-10.0f, -10.0f), up });
+	assets[0].tex_vertex_array.push_back({ { -10.0f, -0.9f, 10.0f}, glm::vec2(-10.0f, 10.0f), up });
+	assets[0].tex_vertex_array.push_back({ { 10.0f, -0.9f, 10.0f}, glm::vec2(10.0f, 10.0f), up });
+	assets[0].tex_vertex_array.push_back({ {10.0f, -0.9f, 10.0f}, glm::vec2(10.0f, 10.0f), up });
+	assets[0].tex_vertex_array.push_back({ {10.0f, -0.9f, -10.0f}, glm::vec2(10.0f, -10.0f), up });
+	assets[0].tex_vertex_array.push_back({ {-10.0f, -0.9f, -10.0f}, glm::vec2(-10.0f, -10.0f), up });
+	assets[0].indices_array = { 0, 1, 2 , 3, 4, 5};
 	PrepareVAO(0);
 
 	// textured 1
@@ -838,12 +841,17 @@ void setup_objects() {
 	assets[13].indices_array = { 0, 1, 2 };
 	PrepareVAO(13);
 
-	// textured 2
+	// textured 2 brick wall
 	assets[14].type = asset_type_texture;
-	assets[14].tex_vertex_array.push_back({ { 10.0f, -1.0f, -10.0f }, glm::vec2(-10.0f, 10.0f), up });
-	assets[14].tex_vertex_array.push_back({ { -10.0f, -1.0f, -10.0f}, glm::vec2(-10.0f, -10.0f), up });
-	assets[14].tex_vertex_array.push_back({ { 0.0f, -1.0f, 0.0f}, glm::vec2(0.0f, 0.0f), up });
-	assets[14].indices_array = { 0, 1, 2 };
+	assets[14].tex_vertex_array.push_back({ { -11.0f, -1.0f, 11.0f}, glm::vec2(-1.0f, -1.0f), up });
+	assets[14].tex_vertex_array.push_back({ { -11.0f, 9.0f, 11.0f}, glm::vec2(-1.0f, 1.0f), up });
+	assets[14].tex_vertex_array.push_back({ { 11.0f, 9.0, 11.0f }, glm::vec2(1.0f, 1.0f), up });
+	assets[14].tex_vertex_array.push_back({ { 11.0f, 9.0f, 11.0f}, glm::vec2(1.0f, 1.0f), up });
+	assets[14].tex_vertex_array.push_back({ { 11.0f, -1.0f, 11.0f}, glm::vec2(1.0f, -1.0f), up });
+	assets[14].tex_vertex_array.push_back({ { -11.0f, -1.0, 11.0f }, glm::vec2(-1.0f, -1.0f), up });
+	assets[14].indices_array = { 0, 1, 2, 3, 4, 5};
+
+
 	PrepareVAO(14);
 
 	// textured 3
