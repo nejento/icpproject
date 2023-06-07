@@ -69,7 +69,9 @@ void draw_transparent(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix);
 
 glm::vec3 check_collision(float x, float z);
 std::array<bool, 3> check_objects_collisions(float x, float z);
+bool check_ball_collision();
 void init_object_coords();
+void init_ball_coords();
 
 
 
@@ -171,6 +173,9 @@ struct coords {
 const int n_col_obj = 9;
 std::vector<vertex> col_obj[n_col_obj];
 coords objects_coords[n_col_obj];
+
+std::vector<vertex> ball_col_obj;
+coords ball_coords;
 
 GLuint prog_h, prog_tex, prog_transp;
 
@@ -556,13 +561,14 @@ int main()
 	// create shaders
 	std::cout << "BASIC SHADER" << '\n';
 	make_shader("resources/my.vert", "resources/my.frag", &prog_h);
-	glUseProgram(prog_h);
 
 	std::cout << "TRANSPARENCY SHADER" << '\n';
 	make_shader("resources/transparency.vert", "resources/transparency.frag", &prog_transp);
 
 	std::cout << "TEXTURE SHADER" << '\n';
 	make_shader("resources/texture.vert", "resources/texture.frag", &prog_tex);
+
+	glUseProgram(prog_h);
 
 
 	// load objects
@@ -667,6 +673,14 @@ int main()
 			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
 			glBindVertexArray(assets[10].VAO);
 			glDrawElements(GL_TRIANGLES, assets[10].indices_array.size(), GL_UNSIGNED_INT, 0);
+			init_ball_coords();
+			/*
+			ball_coords.min_x = ball_coords.min_x + distance.x;
+			ball_coords.max_x = ball_coords.max_x + distance.x;
+			ball_coords.min_z = ball_coords.min_z + distance.z;
+			ball_coords.max_z = ball_coords.max_z + distance.z;
+			*/
+			check_ball_collision();
 			m_m = temp;
 
 
@@ -786,6 +800,15 @@ std::array<bool, 3> check_objects_collisions(float x, float z) {
 	return col;
 }
 
+
+bool check_ball_collision() {
+	//if x step would be in object bounds
+	if (player_position.x > ball_coords.min_x && player_position.x < ball_coords.max_x && player_position.z > ball_coords.min_z && player_position.z < ball_coords.max_z)
+		std::cout << "colliding" << std::endl;
+	return false;
+}
+
+
 void init_object_coords() {
 	//get min and max coords for objects (used in collision logic)
 	for (int i = 0; i < n_col_obj; i++) {
@@ -806,6 +829,27 @@ void init_object_coords() {
 			if (v.position[2] * 2 > objects_coords[i].max_z) {
 				objects_coords[i].max_z = v.position[2] * 2;
 			}
+		}
+	}
+}
+
+void init_ball_coords() {
+	ball_coords.min_x = 999;
+	ball_coords.max_x = -999;
+	ball_coords.min_z = 999;
+	ball_coords.max_z = -999;
+	for (vertex v : assets[10].vertex_array) {
+		if (v.position[0] * 2 < ball_coords.min_x) {
+			ball_coords.min_x = v.position[0] * 2;
+		}
+		if (v.position[0] * 2 > ball_coords.max_x) {
+			ball_coords.max_x = v.position[0] * 2;
+		}
+		if (v.position[2] * 2 < ball_coords.min_z) {
+			ball_coords.min_z = v.position[2] * 2;
+		}
+		if (v.position[2] * 2 > ball_coords.max_z) {
+			ball_coords.max_z = v.position[2] * 2;
 		}
 	}
 }
@@ -978,6 +1022,7 @@ void setup_objects() {
 	}
 
 	init_object_coords();
+	init_ball_coords();
 }
 
 /* Generates a texture object from an image file
@@ -1220,7 +1265,6 @@ void update_player_position()
 	}
 	if (move_forward_flag) {
 		glm::vec3 xz = player_position + speed * glm::normalize(looking_position);
-
 		player_position = check_collision(xz.x, xz.z);
 	}
 	if (move_backward_flag) {
