@@ -1154,11 +1154,6 @@ void draw_textured(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix) {
 	glBindTexture(GL_TEXTURE_2D, texture_id[3]);
 	glDrawElements(GL_TRIANGLES, assets[15].indices_array.size(), GL_UNSIGNED_INT, 0);
 
-	//glove texture
-	glBindVertexArray(assets[11].VAO);
-	glBindTexture(GL_TEXTURE_2D, texture_id[4]);
-	glDrawElements(GL_TRIANGLES, assets[11].indices_array.size(), GL_UNSIGNED_INT, 0);
-
 	glUseProgram(prog_h);
 }
 
