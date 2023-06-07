@@ -663,7 +663,7 @@ int main()
 			ball_position = ball_position + direction_to_player * ball_speed;
 			//bal
 			m_m = glm::translate(m_m, ball_position);
-			//m_m = glm::rotate(m_m, glm::radians(10.0f * (float)glfwGetTime()), glm::vec3(1.0f, 0.0f, 0.0f));
+			m_m = glm::rotate(m_m, glm::radians(720.0f * (float)glfwGetTime()), glm::vec3(0.0f, 1.0f, 0.0f));
 			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
 			glBindVertexArray(assets[10].VAO);
 			glDrawElements(GL_TRIANGLES, assets[10].indices_array.size(), GL_UNSIGNED_INT, 0);
