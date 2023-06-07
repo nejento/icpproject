@@ -158,7 +158,7 @@ const int n_assets = 16; // Počet inicializovaných objektů
 asset assets[n_assets];  // Pole inicializovaných objektů
 
 // Textures
-GLuint texture_id[4];
+GLuint texture_id[16];
 
 // Objects with collisions
 struct coords {
@@ -609,6 +609,7 @@ int main()
 	texture_id[1] = gen_tex("resources/textures/concrete.png");
 	texture_id[2] = gen_tex("resources/textures/brick.png");
 	texture_id[3] = gen_tex("resources/textures/missing.png");
+	texture_id[4] = gen_tex("resources/textures/glove.jpg");
 
 	// === Main Loop ===
 	while (!glfwWindowShouldClose(globals.window)) {
@@ -1154,6 +1155,11 @@ void draw_textured(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix) {
 	glBindVertexArray(assets[15].VAO);
 	glBindTexture(GL_TEXTURE_2D, texture_id[3]);
 	glDrawElements(GL_TRIANGLES, assets[15].indices_array.size(), GL_UNSIGNED_INT, 0);
+
+	//glove texture
+	glBindVertexArray(assets[11].VAO);
+	glBindTexture(GL_TEXTURE_2D, texture_id[4]);
+	glDrawElements(GL_TRIANGLES, assets[11].indices_array.size(), GL_UNSIGNED_INT, 0);
 
 	glUseProgram(prog_h);
 }
