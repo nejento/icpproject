@@ -426,8 +426,6 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 			glfwSetInputMode(globals.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 		}
 	}
-	float speed = 0.3f;
-
 	if (key == GLFW_KEY_W && action == GLFW_PRESS)
 		move_forward_flag = true;
 	if (key == GLFW_KEY_S && action == GLFW_PRESS)
@@ -447,27 +445,6 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	if (key == GLFW_KEY_D && action == GLFW_RELEASE) {
 		move_right_flag = false;
 	}
-
-	/*
-	if ((glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) || (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)) {
-		glm::vec3 xz = player_position + speed * glm::normalize(glm::cross(looking_position, up));
-		player_position = check_collision(xz.x, xz.z);
-	}
-	if ((glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) || (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)) {
-		glm::vec3 xz = player_position - speed * glm::normalize(glm::cross(looking_position, up));
-		player_position = check_collision(xz.x, xz.z);
-	}
-	if ((glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) || (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)) {
-		float x = player_position.x + looking_position.x * speed;
-		float z = player_position.z + looking_position.z * speed;
-		player_position = check_collision(x, z);
-	}
-	if ((glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) || (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)) {
-		float x = player_position.x - looking_position.x * speed;
-		float z = player_position.z - looking_position.z * speed;
-		player_position = check_collision(x, z);
-	}
-	*/
 	std::cout << "Player position: " << player_position.x << " " << player_position.y << " " << player_position.z << " " << std::endl;
 }
 
@@ -608,7 +585,7 @@ int main()
 	texture_id[1] = gen_tex("resources/textures/concrete.png");
 	texture_id[2] = gen_tex("resources/textures/brick_wall_texture.jpg");
 	texture_id[3] = gen_tex("resources/textures/missing.png");
-	texture_id[4] = gen_tex("resources/textures/work_glove.png");
+	texture_id[4] = gen_tex("resources/textures/mic_textura.jpg");
 
 	// === Main Loop ===
 	while (!glfwWindowShouldClose(globals.window)) {
@@ -941,11 +918,19 @@ void setup_objects() {
 	PrepareVAO(9);
 
 	index = 10;
-	assets[index].type = asset_type_color;
+	//asset_type_texture
+	assets[index].type = asset_type_texture;
 	assets[index].color = { 1, 1, 1 };
 	assets[index].scale = { 2, 2, 2 };
 	assets[index].coord = { 0, 15, 0 };
-	loadOBJ("resources/obj/sphere.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+	loadOBJ("resources/obj/mic.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+	for (int i = 0; i < (int)(assets[index].vertex_array.size()); i++)
+	{
+		assets[index].tex_vertex_array.push_back({assets[index].vertex_array[i].position, assets[index].vertex_array[i].texCoor});
+	}
+
+	std::cout << "TEX_VERTEX_COUNT:" << (int)(assets[index].tex_vertex_array.size());
+	
 	PrepareVAO(10);
 
 	index = 11;
@@ -963,6 +948,10 @@ void setup_objects() {
 	assets[index].coord = { -10.5, 0.0, -10.5 };
 	loadOBJ("resources/obj/teapot.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
 	PrepareVAO(12);
+
+
+
+
 
 	//choose objects with collisions
 	int j = 0;
@@ -1160,6 +1149,10 @@ void draw_textured(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix) {
 	glBindVertexArray(assets[15].VAO);
 	glBindTexture(GL_TEXTURE_2D, texture_id[3]);
 	glDrawElements(GL_TRIANGLES, assets[15].indices_array.size(), GL_UNSIGNED_INT, 0);
+
+	glBindVertexArray(assets[10].VAO);
+	glBindTexture(GL_TEXTURE_2D, texture_id[4]);
+	glDrawElements(GL_TRIANGLES, assets[10].indices_array.size(), GL_UNSIGNED_INT, 0);
 
 	glUseProgram(prog_h);
 }

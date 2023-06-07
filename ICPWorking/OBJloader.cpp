@@ -279,7 +279,6 @@ bool loadOBJ(const char* path, std::vector <vertex>& out_vertices, std::vector <
 		}else{
 			out_vertices.push_back({ vertex, color, normal});
 		}
-		
 	}
 
 	fclose(file);
