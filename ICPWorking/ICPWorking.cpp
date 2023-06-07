@@ -101,6 +101,7 @@ s_globals globals;
 
 // player & position
 glm::vec3 player_position(-10.0f, 1.0f, -10.0f);
+glm::vec3 ball_position(0.0f, 0.0f, 0.0f);
 glm::vec3 looking_position(10.0f, 1.0f, 10.0f);
 glm::vec3 up(0, 1, 0);
 
@@ -654,8 +655,10 @@ int main()
 
 
 
-			// move sphere (sun)
+			//chasing ball
 			glm::mat4 temp = m_m;
+
+			//ball_position
 			m_m = glm::rotate(m_m, glm::radians(10.0f * (float)glfwGetTime()), glm::vec3(1.0f, 0.0f, 0.0f));
 			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
 			glBindVertexArray(assets[10].VAO);
@@ -663,12 +666,12 @@ int main()
 			m_m = temp;
 
 
-			// rotate glove
+			// rotate glove and f
 			temp = m_m;
 			
-			glm::vec3 player_direction = (player_position + looking_position) * 0.5f;
-			player_direction.y = player_position.y; //ignore the y component of looking position
-			m_m = glm::translate(m_m, player_direction); // move to the position of the player (camera)
+			glm::vec3 glove_position = (player_position + looking_position) * 0.5f;
+			glove_position.y = player_position.y; //ignore the y component of looking position
+			m_m = glm::translate(m_m, glove_position); // move to the position of the player (camera)
 			m_m = m_m = glm::rotate(m_m, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));//rotate so the palm of the hand is facing down
 			
 			float glove_angle = Yaw-90;
@@ -935,7 +938,7 @@ void setup_objects() {
 	assets[index].type = asset_type_color;
 	assets[index].color = { 1, 1, 1 };
 	assets[index].scale = { 2, 2, 2 };
-	assets[index].coord = { 0, 15, 0 };
+	assets[index].coord = { 0, 0, 0 };
 	loadOBJ("resources/obj/mic.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
 	/*for (int i = 0; i < (int)(assets[index].vertex_array.size()); i++)
 	{
