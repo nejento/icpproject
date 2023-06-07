@@ -375,7 +375,8 @@ static void init_glfw(void)
 		std::cerr << "GLFW window creation error." << std::endl;
 		finalize(EXIT_FAILURE);
 	}
-
+	
+	glfwSetInputMode(globals.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	// Get some GLFW info.
 	{
 		int major, minor, revision;
@@ -433,7 +434,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 			glfwSetWindowMonitor(window, nullptr, globals.x, globals.y, 640, 480, 0);
 			glViewport(0, 0, 640, 480);
 			globals.fullscreen = false;
-			glfwSetInputMode(globals.window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+			glfwSetInputMode(globals.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 		}
 		else {
 			glfwGetWindowSize(window, &globals.x, &globals.y);
