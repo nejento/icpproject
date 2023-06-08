@@ -13,10 +13,49 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Soubory zdrojů\Shaders">
+      <UniqueIdentifier>{09b2e32c-b121-4efe-9e90-a09a5ce94905}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ICPWorking.cpp">
       <Filter>Zdrojové soubory</Filter>
     </ClCompile>
+    <ClCompile Include="OBJloader.cpp">
+      <Filter>Zdrojové soubory</Filter>
+    </ClCompile>
+    <ClCompile Include="RealtimeRasterProcessing.cpp">
+      <Filter>Zdrojové soubory</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="resource.h">
+      <Filter>Hlavičkové soubory</Filter>
+    </ClInclude>
+    <ClInclude Include="OBJloader.h">
+      <Filter>Hlavičkové soubory</Filter>
+    </ClInclude>
+    <ClInclude Include="vertex.h">
+      <Filter>Hlavičkové soubory</Filter>
+    </ClInclude>
+    <ClInclude Include="RealtimeRasterProcessing.h">
+      <Filter>Hlavičkové soubory</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="resources\texture.vert">
+      <Filter>Soubory zdrojů\Shaders</Filter>
+    </None>
+    <None Include="resources\my.frag">
+      <Filter>Soubory zdrojů\Shaders</Filter>
+    </None>
+    <None Include="resources\my.vert">
+      <Filter>Soubory zdrojů\Shaders</Filter>
+    </None>
+    <None Include="resources\texture.frag">
+      <Filter>Soubory zdrojů\Shaders</Filter>
+    </None>
+    <None Include="resources\transparency.frag" />
+    <None Include="resources\transparency.vert" />
   </ItemGroup>
 </Project>

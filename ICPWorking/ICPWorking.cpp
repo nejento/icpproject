@@ -1,160 +1,1288 @@
-﻿// ICPProject1.cpp : Tento soubor obsahuje funkci main. Provádění programu se tam zahajuje a ukončuje.
-//
+// ICP Projekt
 
-
-// Spuštění programu: Ctrl+F5 nebo nabídka Ladit > Spustit bez ladění
-// Ladění programu: F5 nebo nabídka Ladit > Spustit ladění
-
-// Tipy pro zahájení práce:
-//   1. K přidání nebo správě souborů použijte okno Průzkumník řešení.
-//   2. Pro připojení ke správě zdrojového kódu použijte okno Team Explorer.
-//   3. K zobrazení výstupu sestavení a dalších zpráv použijte okno Výstup.
-//   4. K zobrazení chyb použijte okno Seznam chyb.
-//   5. Pokud chcete vytvořit nové soubory kódu, přejděte na Projekt > Přidat novou položku. Pokud chcete přidat do projektu existující soubory kódu, přejděte na Projekt > Přidat existující položku.
-//   6. Pokud budete chtít v budoucnu znovu otevřít tento projekt, přejděte na Soubor > Otevřít > Projekt a vyberte příslušný soubor .sln.
-
-
+//=== Includes ===
+// C++ 
 #include <iostream>
-#include <opencv2/opencv.hpp>
+#include <chrono>
 #include <numeric>
+#include <cstdio>
+#include <cstdlib>
+#include <vector>
+#include <thread>
+#include <memory> //for smart pointers (unique_ptr)
+#include <fstream>
+#include <sstream>
+#include <random>
+#include <cmath>
 
-void draw_cross_relative(cv::Mat& img, cv::Point2f center_relative, int size);
-void draw_cross(cv::Mat& img, int x, int y, int size);
-cv::Point2f find_center_Y(cv::Mat& frame);
-cv::Point2f find_center_HSV(cv::Mat& frame);
+// OpenCV 
+#include <opencv2\opencv.hpp>
 
+// OpenGL Extension Wrangler
+#include <GL/glew.h> 
+#include <GL/wglew.h> //WGLEW = Windows GL Extension Wrangler (change for different platform) 
+
+// GLFW toolkit
+#include <GLFW/glfw3.h>
+
+// OpenGL math
+#include <glm/glm.hpp>
+#include <glm/ext.hpp>
+
+// irrKlang sound engine
+#include <irrklang/irrKlang.h>
+
+// Other Header files
+#include "OBJloader.h"
+#include "RealtimeRasterProcessing.h"
+
+// === Headers ===
+void init_glew(void);
+void init_glfw(void);
+void error_callback(int error, const char* description);
+void finalize(int code);
+void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
+std::string getProgramInfoLog(const GLuint obj);
+std::string getShaderInfoLog(const GLuint obj);
+std::string textFileRead(const std::string fn);
+
+irrklang::ISoundEngine* engine = irrklang::createIrrKlangDevice(); // Sound engine
+
+void setup_objects();
+GLuint PrepareVAO(int index);
+
+GLuint gen_tex(std::string filepath);
+void make_shader(std::string vertex_shader, std::string fragment_shader, GLuint* shader);
+void draw_textured(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix);
+void draw_transparent(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix);
+
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+void cursor_position_callback(GLFWwindow* window, double xpos, double ypos);
+void update_player_position();
+
+glm::vec3 check_collision(float x, float z);
+std::array<bool, 3> check_objects_collisions(float x, float z);
+void check_ball_collision();
+void init_object_coords();
+void init_ball_coords();
+void play_walk_sound();
+
+
+// === Globals ===
 typedef struct s_globals {
-    cv::VideoCapture capture;
+	GLFWwindow* window;
+	int height;
+	int width;
+	double app_start_time;
+	cv::VideoCapture capture;
+	bool fullscreen = false;
+	int x = 0;
+	int y = 0;
+	double last_fps;
+	float fov = 90.0f;
 } s_globals;
 
 s_globals globals;
 
+// player & position
+bool move_left_flag = false;
+bool move_right_flag = false;
+bool move_forward_flag = false;
+bool move_backward_flag = false;
+
+float delta_t = 0; // time between frames used for movement calculation
+float last_frame = 0; // time of the last frame rendered
+
+glm::vec3 player_position(-10.0f, 1.0f, -10.0f);
+glm::vec3 ball_position(0.0f, 0.0f, 0.0f);
+glm::vec3 looking_position(10.0f, 1.0f, 10.0f);
+glm::vec3 teapod_1_position(0.0f, 2.0f, 0.0f);
+glm::vec3 up(0, 1, 0);
+
+GLfloat Yaw = -90.0f;
+GLfloat Pitch = 0.0f;;
+GLfloat Roll = 0.0f;
+
+GLfloat lastxpos = 0.0f;
+GLfloat lastypos = 0.0f;
+#define array_cnt(a) ((unsigned int)(sizeof(a) / sizeof(a[0])))
+
+// movement and sound help variables
+float step_counter = 0;
+bool played_left = false;
+bool played_right = false;
+bool oofing = true;
+
+
+// === Asset Storage ===
+// Vertex with color
+/*
+struct vertex {
+	glm::vec3 position; // Vertex pos
+	glm::vec3 color; // Color
+	glm::vec3 normal; // Normal
+};
+*/
+
+// Vertex with texture
+struct tex_vertex {
+	glm::vec3 position;
+	glm::vec2 texcoord;
+	glm::vec3 normal;
+};
+
+// Asset type
+enum asset_type {
+	asset_type_color,
+	asset_type_texture
+};
+
+// Asset
+struct asset {
+	asset_type type;							// Asset type
+	GLuint VAO;									// Vertex Array Object
+	GLuint VBO;									// Vertex Buffer Object
+	GLuint EBO;									// Element Buffer Object
+	std::vector<vertex> vertex_array;			// Vertex Array
+	std::vector<tex_vertex> tex_vertex_array;	// Vertex Array
+	std::vector<GLuint> indices_array;			// Index Array
+	glm::vec3 color;							// Color
+	glm::vec3 scale;							// Scale
+	glm::vec3 coord;							// Coordinates
+};
+const int n_assets = 17; // Počet inicializovaných objektů
+asset assets[n_assets];  // Pole inicializovaných objektů
+
+// Textures
+GLuint texture_id[16];
+
+// Objects with collisions
+struct coords {
+	float min_x;
+	float max_x;
+	float min_z;
+	float max_z;
+};
+const int n_col_obj = 9;
+std::vector<vertex> col_obj[n_col_obj];
+coords objects_coords[n_col_obj];
+
+std::vector<vertex> ball_col_obj;
+coords ball_coords;
+
+GLuint prog_h, prog_tex, prog_transp;
+
+
+// === Templated ===
+void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
+{
+	auto const src_str = [source]() {
+		switch (source)
+		{
+		case GL_DEBUG_SOURCE_API: return "API";
+		case GL_DEBUG_SOURCE_WINDOW_SYSTEM: return "WINDOW SYSTEM";
+		case GL_DEBUG_SOURCE_SHADER_COMPILER: return "SHADER COMPILER";
+		case GL_DEBUG_SOURCE_THIRD_PARTY: return "THIRD PARTY";
+		case GL_DEBUG_SOURCE_APPLICATION: return "APPLICATION";
+		case GL_DEBUG_SOURCE_OTHER: return "OTHER";
+		default: return "Unknown";
+		}
+	}();
+	auto const type_str = [type]() {
+		switch (type)
+		{
+		case GL_DEBUG_TYPE_ERROR: return "ERROR";
+		case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: return "DEPRECATED_BEHAVIOR";
+		case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR: return "UNDEFINED_BEHAVIOR";
+		case GL_DEBUG_TYPE_PORTABILITY: return "PORTABILITY";
+		case GL_DEBUG_TYPE_PERFORMANCE: return "PERFORMANCE";
+		case GL_DEBUG_TYPE_MARKER: return "MARKER";
+		case GL_DEBUG_TYPE_OTHER: return "OTHER";
+		default: return "Unknown";
+		}
+	}();
+	auto const severity_str = [severity]() {
+		switch (severity) {
+		case GL_DEBUG_SEVERITY_NOTIFICATION: return "NOTIFICATION";
+		case GL_DEBUG_SEVERITY_LOW: return "LOW";
+		case GL_DEBUG_SEVERITY_MEDIUM: return "MEDIUM";
+		case GL_DEBUG_SEVERITY_HIGH: return "HIGH";
+		default: return "Unknown";
+		}
+	}();
+	std::cout << "[GL CALLBACK]: " <<
+		"source = " << src_str <<
+		", type = " << type_str <<
+		", severity = " << severity_str <<
+		", ID = '" << id << '\'' <<
+		", message = '" << message << '\'' << std::endl;
+}
+
+//=== Templated: Čtení ze souboru ===
+std::string textFileRead(const std::string fn) {
+	std::ifstream file;
+	file.exceptions(std::ifstream::badbit);
+	std::stringstream ss;
+
+	file.open(fn);
+	if (file.is_open()) {
+		std::string content;
+		ss << file.rdbuf();
+	}
+	else {
+		std::cerr << "Error opening file: " << fn << std::endl;
+		exit(EXIT_FAILURE);
+	}
+	return std::move(ss.str());
+}
+
+//=== Templated: Vypisuje informace o shaderu ===
+std::string getShaderInfoLog(const GLuint obj) {
+	int infologLength = 0;
+	std::string s;
+	glGetShaderiv(obj, GL_INFO_LOG_LENGTH, &infologLength);
+	if (infologLength > 0) {
+		std::vector<char> v(infologLength);
+		glGetShaderInfoLog(obj, infologLength, NULL,
+			v.data());
+		s.assign(begin(v), end(v));
+	}
+	return s;
+}
+
+//=== Templated: Vypisuje informace o programu ===
+std::string getProgramInfoLog(const GLuint obj) {
+	int infologLength = 0;
+	std::string s;
+	glGetProgramiv(obj, GL_INFO_LOG_LENGTH, &infologLength);
+	if (infologLength > 0) {
+		std::vector<char> v(infologLength);
+		glGetProgramInfoLog(obj, infologLength, NULL,
+			v.data());
+		s.assign(begin(v), end(v));
+	}
+	return s;
+}
+
+//=== Templated: Uzavření a ukončení okna ===
+static void finalize(int code)
+{
+	// ...
+
+	// Close OpenGL window if opened and terminate GLFW  
+	if (globals.window)
+		glfwDestroyWindow(globals.window);
+	glfwTerminate();
+
+	exit(code);
+	// ...
+}
+
+//=== Templated: Zachytávání chyb ===
+void error_callback(int error, const char* description)
+{
+	std::cerr << "Error: " << description << std::endl;
+}
+
+//=== Templated: Inicializace GL extensions GLEW, použitelné PO vytvoření GL contextu ===
+void init_glew(void) {
+	//
+	// Initialize all valid GL extensions with GLEW.
+	// Usable AFTER creating GL context!
+	//
+	{
+		GLenum glew_ret;
+		glew_ret = glewInit();
+		if (glew_ret != GLEW_OK)
+		{
+			std::cerr << "WGLEW failed with error: " << glewGetErrorString(glew_ret) << std::endl;
+			exit(EXIT_FAILURE);
+		}
+		else
+		{
+			std::cout << "GLEW successfully initialized to version: " << glewGetString(GLEW_VERSION) << std::endl;
+		}
+		// Platform specific. (Change to GLXEW or ELGEW if necessary.)
+		glew_ret = wglewInit();
+		if (glew_ret != GLEW_OK)
+		{
+			std::cerr << "WGLEW failed with error: " << glewGetErrorString(glew_ret) << std::endl;
+			exit(EXIT_FAILURE);
+		}
+		else
+		{
+			std::cout << "WGLEW successfully initialized platform specific functions." << std::endl;
+		}
+	}
+}
+
+//=== Editable: Nastavení GLFW ===
+static void init_glfw(void)
+{
+	//
+	// GLFW init.
+	//
+
+	// set error callback first
+	glfwSetErrorCallback(error_callback);
+
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_POLYGON_SMOOTH);
+	glEnable(GL_LINE_SMOOTH);
+
+	// assume ALL objects are non-transparent 
+	glEnable(GL_CULL_FACE);
+
+	// Transparency
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	//initialize GLFW library
+	int glfw_ret = glfwInit();
+	if (!glfw_ret)
+	{
+		std::cerr << "GLFW init failed." << std::endl;
+		finalize(EXIT_FAILURE);
+	}
+
+	// Shader based, modern OpenGL (3.3 and higher)
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5); // Living on the edge!
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // only new functions
+	//glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE); // only old functions (for old tutorials etc.)
+
+	glfwWindowHint(GLFW_SAMPLES, 4); // 4x antialiasing
+	globals.window = glfwCreateWindow(800, 600, "Final Project Brož & Jacik", NULL, NULL);
+	if (!globals.window)
+	{
+		std::cerr << "GLFW window creation error." << std::endl;
+		finalize(EXIT_FAILURE);
+	}
+	
+	glfwSetInputMode(globals.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	// Get some GLFW info.
+	{
+		int major, minor, revision;
+
+		glfwGetVersion(&major, &minor, &revision);
+		std::cout << "Running GLFW " << major << '.' << minor << '.' << revision << std::endl;
+		std::cout << "Compiled against GLFW " << GLFW_VERSION_MAJOR << '.' << GLFW_VERSION_MINOR << '.' << GLFW_VERSION_REVISION << std::endl;
+	}
+
+	glfwMakeContextCurrent(globals.window);                                     // Set current window.
+	glfwGetFramebufferSize(globals.window, &globals.width, &globals.height);    // Get window size.
+	//glfwSwapInterval(0);                                                      // Set V-Sync OFF.
+	glfwSwapInterval(1);                                                        // Set V-Sync ON.
+
+
+	globals.app_start_time = glfwGetTime();                                     // Get start time.
+}
+
+
+//=== Movement ===
+/* Editable: Key callback function
+* @brief: Callback function for keyboard input
+* @param: window - window that received the event
+* @param: key - key that was pressed or released
+* @param: scancode - system-specific scancode of the key
+* @param: action - GLFW_PRESS, GLFW_RELEASE or GLFW_REPEAT
+* @param: mods - bit field describing which modifier keys were held down
+* @return: none
+*/
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+		finalize(EXIT_SUCCESS);
+		//glfwSetWindowShouldClose(window, GLFW_TRUE);
+	if (key == GLFW_KEY_F && action == GLFW_PRESS) {
+		if (globals.fullscreen) {
+			glfwSetWindowMonitor(window, nullptr, globals.x, globals.y, 640, 480, 0);
+			glViewport(0, 0, 640, 480);
+			globals.fullscreen = false;
+			glfwSetInputMode(globals.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+		}
+		else {
+			glfwGetWindowSize(window, &globals.x, &globals.y);
+			GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+			const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+			glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+			glViewport(0, 0, mode->width, mode->height);
+			globals.fullscreen = true;
+			glfwSetInputMode(globals.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+		}
+	}
+	if (key == GLFW_KEY_W && action == GLFW_PRESS)
+		move_forward_flag = true;
+	if (key == GLFW_KEY_S && action == GLFW_PRESS)
+		move_backward_flag = true;
+	if (key == GLFW_KEY_A && action == GLFW_PRESS)
+		move_left_flag = true;
+	if (key == GLFW_KEY_D && action == GLFW_PRESS) 
+		move_right_flag = true;
+
+	if (key == GLFW_KEY_W && action == GLFW_RELEASE) {
+		move_forward_flag = false;
+		std::cout << 'W';
+	}
+	if (key == GLFW_KEY_S && action == GLFW_RELEASE) {
+		move_backward_flag = false;
+		std::cout << 'S';
+	}
+	if (key == GLFW_KEY_A && action == GLFW_RELEASE) {
+		move_left_flag = false;
+		std::cout << 'A';
+	}	
+	if (key == GLFW_KEY_D && action == GLFW_RELEASE) {
+		move_right_flag = false;
+		std::cout << 'D';
+	}
+	std::cout << "Player position: " << player_position.x << " " << player_position.y << " " << player_position.z << " " << std::endl;
+	
+}
+
+/* Editable: Mouse callback function - Pouze zaznamenáváme kliknutí, nereflektujeme žádné změny, jen vypisujeme v logu
+* @brief: Callback function for mouse input
+* @param: window - window that received the event
+* @param: button - mouse button that was pressed or released
+* @param: action - GLFW_PRESS or GLFW_RELEASE
+* @param: mods - bit field describing which modifier keys were held down
+* @return: none
+*/
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
+		std::cout << "MOUSE_RIGHT" << '\n';
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+		std::cout << "MOUSE_LEFT" << '\n';
+	if (button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_PRESS)
+		std::cout << "MOUSE_MIDDLE" << '\n';
+}
+
+/* Editable: Scroll callback function - Použité pro změnu FOV
+* @brief: Callback function for mouse wheel scrolling
+* @param: window - window that received the event
+* @param: xoffset - scroll offset along the x-axis
+* @param: yoffset - scroll offset along the y-axis
+* @return: none
+*/
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+	std::cout << "mouse wheel(" << xoffset << ", " << yoffset << ")" << '\n';
+	globals.fov += 10 * -yoffset;
+	if (globals.fov > 170.0f) {
+		globals.fov = 170.0f;
+	}
+	if (globals.fov < 20.0f) {
+		globals.fov = 20.0f;
+	}
+}
+
+/* Editable: Cursor position callback function - Použité pro otáčení postavy, tedy kamery
+* @brief: Callback function for cursor position
+* @param: window - window that received the event
+* @param: xpos - new cursor x-coordinate, relative to the left edge of the content area
+* @param: ypos - new cursor y-coordinate, relative to the top edge of the content area
+* @return: none
+*/
+void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
+{
+	//processMouseMovement(lastxpos-xpos, lastypos-ypos);
+	std::cout << "cursor(" << xpos << ", " << ypos << ") " << '\n';
+
+	Yaw += (xpos - lastxpos) / 5;
+	Pitch += (lastypos - ypos) / 5;
+	std::cout << "yp(" << Yaw << ", " << Pitch << ") " << '\n';
+
+	if (true)
+	{
+		if (Pitch > 89.0f)
+			Pitch = 89.0f;
+		if (Pitch < -89.0f)
+			Pitch = -89.0f;
+	}
+
+	looking_position.x = cos(glm::radians(Yaw)) * cos(glm::radians(Pitch));
+	looking_position.y = sin(glm::radians(Pitch));
+	looking_position.z = sin(glm::radians(Yaw)) * cos(glm::radians(Pitch));
+
+	lastxpos = xpos;
+	lastypos = ypos;
+}
+
+
+//=== Main === 
 int main()
 {
-    //cv::Mat frame = cv::imread("resources/HSV-MAP.png");
-    cv::Mat frame;
-    globals.capture = cv::VideoCapture(cv::CAP_DSHOW);
-    if (!globals.capture.isOpened())
-    {
-        std::cerr << "no camera" << std::endl;
-        exit(EXIT_FAILURE);
-    }
+	std::cout << "Type \"r\" and confirm with ENTER for realtime raster processing or type anything else for the OpenGL application.\n";
+	char c;
+	std::cin.get(c);
+	
+	if (c == 'r') {
+		run_2D_raster_processing();
+		return 0 ;
+	}
 
-    while (true)
-    {
-        globals.capture.read(frame);
-        if (frame.empty())
-        {
-            std::cerr << "Device closed (or video at the end)" << std::endl;
-            break;
-        }
-        auto start = std::chrono::steady_clock::now();
+	init_glfw();
+	init_glew();
 
-        //cv::Point2f center_relative = find_center_Y(frame);
-        cv::Point2f center_relative = find_center_HSV(frame);
+	if (glfwExtensionSupported("GL_ARB_debug_output"))
+	{
+		glDebugMessageCallback(MessageCallback, 0);
+		glEnable(GL_DEBUG_OUTPUT);
+		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+		std::cout << "GL_DEBUG enabled." << std::endl;
+	}
 
-        std::cout << "Stred zarovky relativne: " << center_relative << '\n';
+	// enable Z buffer test
+	glEnable(GL_DEPTH_TEST);
 
-        auto end = std::chrono::steady_clock::now();
+	// ALL objects are non-transparent, cull back face of polygons 
+	glEnable(GL_CULL_FACE);
 
-        draw_cross_relative(frame, center_relative, 20);
-        cv::namedWindow("frame");
-        cv::imshow("frame", frame);
+	// create shaders
+	std::cout << "BASIC SHADER" << '\n';
+	make_shader("resources/my.vert", "resources/my.frag", &prog_h);
 
-        std::chrono::duration<double> elapsed_seconds = end - start;
-        std::cout << "Elapsed time: " << elapsed_seconds.count() << "sec" << std::endl;
+	std::cout << "TRANSPARENCY SHADER" << '\n';
+	make_shader("resources/transparency.vert", "resources/transparency.frag", &prog_transp);
 
-        cv::waitKey(1);
+	std::cout << "TEXTURE SHADER" << '\n';
+	make_shader("resources/texture.vert", "resources/texture.frag", &prog_tex);
 
-        //std::cout << "Hello World!";
-    }
+	glUseProgram(prog_h);
+
+
+	// load objects
+	setup_objects();
+
+	// set callbacks
+	glfwSetCursorPosCallback(globals.window, cursor_position_callback);
+	glfwSetScrollCallback(globals.window, scroll_callback);
+	glfwSetMouseButtonCallback(globals.window, mouse_button_callback);
+	glfwSetKeyCallback(globals.window, key_callback);
+
+	// frames and time
+	int frame_cnt = 0;
+	globals.last_fps = glfwGetTime();
+
+	// transformations
+	// projection & viewport
+	int width, height;
+	glfwGetWindowSize(glfwGetCurrentContext(), &width, &height);
+
+	float ratio = static_cast<float>(width) / height;
+
+	// set visible area
+	glViewport(0, 0, width, height);
+
+	// Načtení textur
+	texture_id[0] = gen_tex("resources/textures/grass.jpg");
+	texture_id[1] = gen_tex("resources/textures/brick_wall_texture.jpg");
+	texture_id[2] = gen_tex("resources/textures/box.png");
+	texture_id[3] = gen_tex("resources/textures/mic_textura.jpg");
+
+	// === Main Loop ===
+	while (!glfwWindowShouldClose(globals.window)) {
+
+		float current_frame = glfwGetTime();
+		delta_t = current_frame - last_frame;
+		last_frame = current_frame;
+
+		glm::mat4 projectionMatrix = glm::perspective(
+			glm::radians(globals.fov), // The vertical Field of View, in radians: the amount of "zoom". Think "camera lens". Usually between 90� (extra wide) and 30� (quite zoomed in)
+			ratio,			           // Aspect Ratio. Depends on the size of your window.
+			0.1f,                      // Near clipping plane. Keep as big as possible, or you'll get precision issues.
+			20000.0f                   // Far clipping plane. Keep as little as possible.
+		);
+
+		//set uniform for shaders - projection matrix
+		glUniformMatrix4fv(glGetUniformLocation(prog_h, "uP_m"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+
+		// set light color for shader
+		glUniform4f(glGetUniformLocation(prog_h, "lightColor"), 1.0f, 1.0f, 1.0f, 1.0f);
+
+		update_player_position(); //changing the movement of the player based on movement flags
+
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		{
+			glUseProgram(prog_h);
+
+			// Model Matrix
+			glm::mat4 m_m = glm::identity<glm::mat4>();
+
+			// modify Model matrix and send to shaders
+			m_m = glm::scale(m_m, glm::vec3(2.0f));
+
+			// Předání do shaderu
+			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
+
+			// View matrix
+			glm::mat4 v_m = glm::lookAt(
+				player_position, //position of camera
+				glm::vec3(player_position + looking_position), //where to look
+				up  //UP direction
+			);
+
+			// set light pos in above player for shaders
+			glUniform3f(glGetUniformLocation(prog_h, "lightPos"), player_position.x / 2, player_position.y / 2 + 1.0f, player_position.z / 2);
+			// set camera pos for shaders
+			glUniform3f(glGetUniformLocation(prog_h, "camPos"), player_position.x, player_position.y, player_position.z);
+
+			// Předání do shaderu
+			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uV_m"), 1, GL_FALSE, glm::value_ptr(v_m));
+
+			// Use buffers
+			// Objekty 1 - 5 jsou statické stěny a prostřední žlutý čtverec
+			for (int i = 1; i < 9 ; i++) {
+				glBindVertexArray(assets[i].VAO);
+				glDrawElements(GL_TRIANGLES, assets[i].indices_array.size(), GL_UNSIGNED_INT, 0);
+			}
+
+
+			//chasing ball			
+			float ball_speed = 8.0f * delta_t;
+			glm::mat4 temp = m_m;
+			glm::vec3 target_offset = glm::vec3(0,-0.175f,0);
+			glm::vec3 direction_to_player = player_position*0.5f - ball_position + target_offset;
+			direction_to_player = glm::normalize(direction_to_player);
+			glm::vec3 distance = direction_to_player * ball_speed;
+			ball_position = ball_position + distance;
+			//bal
+			m_m = glm::translate(m_m, ball_position);
+			m_m = glm::rotate(m_m, glm::radians(720.0f * (float)glfwGetTime()), glm::vec3(0.0f, 1.0f, 0.0f));
+			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
+			glBindVertexArray(assets[10].VAO);
+			glDrawElements(GL_TRIANGLES, assets[10].indices_array.size(), GL_UNSIGNED_INT, 0);
+			
+			// Set ball offsets
+			ball_coords.min_x = ball_coords.min_x + distance.x;
+			ball_coords.max_x = ball_coords.max_x + distance.x;
+			ball_coords.min_z = ball_coords.min_z + distance.z;
+			ball_coords.max_z = ball_coords.max_z + distance.z;
+			//std::cout << "ball cords " << ball_coords.min_x << " " << ball_coords.max_x << " " << ball_coords.min_z << " " << ball_coords.max_z << std::endl;
+			//std::cout << "ball " << ball_position.x << " " << ball_position.z << " player " << player_position.x * 0.5f << " " << player_position.z * 0.5f << std::endl;
+			check_ball_collision(); //collision check
+
+			m_m = temp;
+
+
+			// rotate glove and f
+			temp = m_m;
+			
+			glm::vec3 glove_position = (player_position + looking_position) * 0.5f;
+			glove_position.y = player_position.y; //ignore the y component of looking position
+			m_m = glm::translate(m_m, glove_position); // move to the position of the player (camera)
+			m_m = m_m = glm::rotate(m_m, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));//rotate so the palm of the hand is facing down
+			
+			float glove_angle = Yaw-90;
+			m_m = m_m = glm::rotate(m_m, glm::radians(glove_angle), glm::vec3(0.0f, 0.0f, 1.0f)); //rotate the glove so it matches the direction the camera faces
+
+
+			glm::vec3 gloveOffset = glm::vec3(0.01f, -2,1);
+			m_m = glm::translate(m_m, gloveOffset); //apply offset to put the glove to the right position relative to the camera
+			
+			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
+			glBindVertexArray(assets[11].VAO);
+			glDrawElements(GL_TRIANGLES, assets[11].indices_array.size(), GL_UNSIGNED_INT, 0);
+			m_m = temp;
+
+			// move teapot in the center
+			temp = m_m;
+
+		
+			glm::vec3 teapot_1_offset = glm::vec3(0, std::sin((float)glfwGetTime())*0.8, 0);
+			glm::vec3 teapot_bop = (teapod_1_position + teapot_1_offset);
+			m_m = glm::rotate(m_m, glm::radians(90.0f * (float)glfwGetTime()), glm::vec3(0.0f, 1.0f, 0.0f));
+			m_m = glm::translate(m_m, teapot_bop);
+			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
+			glBindVertexArray(assets[12].VAO);
+			glDrawElements(GL_TRIANGLES, assets[12].indices_array.size(), GL_UNSIGNED_INT, 0);
+			m_m = temp;
+			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
+
+			// textured object draw
+			draw_textured(m_m, v_m, projectionMatrix);
+			// transparent object draw
+			draw_transparent(m_m, v_m, projectionMatrix);
+
+		}
+		// swap buffers for rendering, catch and react to events
+		glfwSwapBuffers(globals.window);
+		glfwPollEvents();
+
+		// frames a time
+		frame_cnt++;
+		double now = glfwGetTime();
+
+		// display fps
+		if ((now - globals.last_fps) > 1) {
+			globals.last_fps = now;
+			std::cout << "FPS: " << frame_cnt << std::endl;
+			frame_cnt = 0;
+		}
+	}
+
+	std::cout << "Program ended." << '\n';
+	return (EXIT_SUCCESS);
 }
 
-cv::Point2f find_center_HSV(cv::Mat& frame)
+/*
+* Updates the player position based on the set flags. If moving plays the walking sound.
+*/
+void update_player_position()
 {
-    cv::Mat frame_hsv;
-cv:cvtColor(frame, frame_hsv, cv::COLOR_BGR2HSV);
+	float speed = 35.0f * delta_t;
+	bool should_play = false;
 
-    //HSV range(0...180, 0...255, 0...255);
-    cv::Scalar lower_bound(40, 80, 80);
-    cv::Scalar upper_bound(70, 255, 255);
-    cv::Mat frame_treshold;
-
-    cv::inRange(frame_hsv, lower_bound, upper_bound, frame_treshold);
-
-    cv::namedWindow("frametr");
-    cv::imshow("frametr", frame_treshold);
-
-    std::vector<cv::Point> white_pixels;
-    cv::findNonZero(frame_treshold, white_pixels);
-    cv::Point white_reduced = std::reduce(white_pixels.begin(), white_pixels.end());
-
-    cv::Point2f center_relative((float)white_reduced.x / white_pixels.size() / frame.cols, (float)white_reduced.y / white_pixels.size() / frame.rows);
-
-    return center_relative;
+	if (move_right_flag) {
+		glm::vec3 xz = player_position + speed * glm::normalize(glm::cross(looking_position, up));
+		player_position = check_collision(xz.x, xz.z);
+		should_play = true;
+	}
+	if (move_left_flag) {
+		glm::vec3 xz = player_position - speed * glm::normalize(glm::cross(looking_position, up));
+		player_position = check_collision(xz.x, xz.z);
+		should_play = true;
+	}
+	if (move_forward_flag) {
+		glm::vec3 xz = player_position + speed * glm::normalize(looking_position);
+		player_position = check_collision(xz.x, xz.z);
+		should_play = true;
+	}
+	if (move_backward_flag) {
+		glm::vec3 xz = player_position - speed * glm::normalize(looking_position);
+		player_position = check_collision(xz.x, xz.z);
+		should_play = true;
+	}
+	if (should_play) play_walk_sound();
 }
 
-cv::Point2f find_center_Y(cv::Mat& frame) {
-
-    cv::Mat frame2;
-    frame.copyTo(frame2);
-
-    int sx = 0, sy = 0, sw = 0;
-
-    for (int y = 0; y < frame.cols; y++)
-    {
-        for (int x = 0; x < frame.rows; x++)
-        {
-            cv::Vec3b pixel = frame.at<cv::Vec3b>(x, y); //BGR -> 2,1,0
-            unsigned char Y = 0.299 * pixel[2] + 0.587 * pixel[1] + 0.114 * pixel[0];
-
-            if (Y < 228)
-            {
-                Y = 0;
-            }
-            else
-            {
-                Y = 255;
-                sx += x;
-                sy += y;
-                sw++;
-            }
-
-            frame2.at<cv::Vec3b>(x, y) = cv::Vec3b(Y, Y, Y);
-        }
-    }
-
-    cv::Point2f center((float)sy / sw, (float)sx / sw);
-    cv::Point2f center_relative((float)center.x / frame.cols, (float)center.y / frame.rows);
-    //frame2.at<cv::Vec3b>(sx / sw, sy / sw) = cv::Vec3b(0, 0, 255);
-
-    return center_relative;
+/* 
+* Plays the walking sound
+*/
+void play_walk_sound() {
+	if (step_counter < 1 && !played_left) {
+		played_left = true;;
+		engine->play2D("resources/sounds/run1.wav");
+	}
+	if (step_counter > 3 && !played_right) {
+		played_right = true;
+		engine->play2D("resources/sounds/run2.wav");
+	}
+	step_counter = step_counter + (10 * delta_t);
+	if (step_counter > 6) {
+		step_counter = 0;
+		played_left = false;
+		played_right = false;
+	}
 }
 
-void draw_cross(cv::Mat& img, int x, int y, int size)
+/*
+* Checks if the player would collide with any object if he moved to the given position.
+* If colliding, moves the player only on the axis where the collision would not happen.
+*/
+glm::vec3 check_collision(float x, float z) {
+	std::array<bool, 3> col = check_objects_collisions(x, z);
+	if (col[0]) { // No collision, move on both axes
+		player_position.x = x;
+		player_position.z = z;
+	}
+	else {
+		if (col[1]) //Collision on Z, move only on X
+			player_position.x = x;
+		if (col[2]) //Collision on X, move only on Z
+			player_position.z = z;
+	}
+	return player_position;
+}
+
+/*
+* Checks collision with set collision squares of set objects
+*/
+std::array<bool, 3> check_objects_collisions(float x, float z) {
+	std::array<bool, 3> col = { true, true, true };
+	for (coords c : objects_coords) {
+		//if x is in object bounds and z is in object bounds
+		if (x > c.min_x && x < c.max_x && z > c.min_z && z < c.max_z) {
+			col[0] = false;
+			//if x step would be in object bounds
+			if (player_position.x < c.min_x || player_position.x > c.max_x) {
+				col[1] = false;
+			}
+			//if z step would be in object bounds
+			if (player_position.z < c.min_z || player_position.z > c.max_z) {
+				col[2] = false;
+			}
+			break;
+		}
+	}
+	return col;
+}
+
+/*
+* Checks if the player is colliding with the ball's collision box. If it is, plays the oof sound.
+*/
+void check_ball_collision() {
+	glm::vec3 p_p = player_position * 0.5f;
+	//if (player_position.x * 0.5f > ball_coords.min_x && player_position.x * 0.5f < ball_coords.max_x && player_position.z * 0.5f > ball_coords.min_z && player_position.z * 0.5f < ball_coords.max_z)
+	if (p_p.x > ball_coords.min_x && p_p.x < ball_coords.max_x && p_p.z > ball_coords.min_z && p_p.z < ball_coords.max_z) {
+		if (!oofing) {
+			engine->play2D("resources/sounds/oof.wav");
+			oofing = true;
+		}
+	}
+	else oofing = false;
+}
+
+/*
+* Initializes the max and min x and z coordinates of the objects for collision squares based on posision of the vertices.
+*/
+void init_object_coords() {
+	for (int i = 0; i < n_col_obj; i++) {
+		objects_coords[i].min_x = 999;
+		objects_coords[i].max_x = -999;
+		objects_coords[i].min_z = 999;
+		objects_coords[i].max_z = -999;
+		for (vertex v : col_obj[i]) {
+			if (v.position[0] * 2 < objects_coords[i].min_x) {
+				objects_coords[i].min_x = v.position[0] * 2;
+			}
+			if (v.position[0] * 2 > objects_coords[i].max_x) {
+				objects_coords[i].max_x = v.position[0] * 2;
+			}
+			if (v.position[2] * 2 < objects_coords[i].min_z) {
+				objects_coords[i].min_z = v.position[2] * 2;
+			}
+			if (v.position[2] * 2 > objects_coords[i].max_z) {
+				objects_coords[i].max_z = v.position[2] * 2;
+			}
+		}
+	}
+}
+
+/*
+* Initializes the max and min x and z coordinates of the ball for collision square based on posision of the vertices.
+* Collisions are then only updated based on the offset of the chasing ball.
+*/
+void init_ball_coords() {
+	ball_coords.min_x = 999;
+	ball_coords.max_x = -999;
+	ball_coords.min_z = 999;
+	ball_coords.max_z = -999;
+	for (vertex v : assets[10].vertex_array) {
+		if (v.position[0] * 2 < ball_coords.min_x) {
+			ball_coords.min_x = v.position[0] * 2;
+		}
+		if (v.position[0] * 2 > ball_coords.max_x) {
+			ball_coords.max_x = v.position[0] * 2;
+		}
+		if (v.position[2] * 2 < ball_coords.min_z) {
+			ball_coords.min_z = v.position[2] * 2;
+		}
+		if (v.position[2] * 2 > ball_coords.max_z) {
+			ball_coords.max_z = v.position[2] * 2;
+		}
+	}
+}
+
+/*
+* Setup colors, vertices, coords and scales of the assets.
+*/
+void setup_objects() {
+
+	// === Textured objects ===
+	glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+
+	// Textured Grass
+	assets[0].type = asset_type_texture;
+	assets[0].tex_vertex_array.push_back({ {-10.0f, -0.9f, -10.0f}, glm::vec2(-5.0f, -5.0f), up });
+	assets[0].tex_vertex_array.push_back({ { -10.0f, -0.9f, 10.0f}, glm::vec2(-5.0f, 5.0f), up });
+	assets[0].tex_vertex_array.push_back({ { 10.0f, -0.9f, 10.0f}, glm::vec2(5.0f, 5.0f), up });
+	assets[0].tex_vertex_array.push_back({ {10.0f, -0.9f, 10.0f}, glm::vec2(5.0f, 5.0f), up });
+	assets[0].tex_vertex_array.push_back({ {10.0f, -0.9f, -10.0f}, glm::vec2(5.0f, -5.0f), up });
+	assets[0].tex_vertex_array.push_back({ {-10.0f, -0.9f, -10.0f}, glm::vec2(-5.0f, -5.0f), up });
+	assets[0].indices_array = { 0, 1, 2 , 3, 4, 5};
+	PrepareVAO(0);
+
+	// Textured Brick Wall
+	assets[14].type = asset_type_texture;
+	assets[14].tex_vertex_array.push_back({ { -11.0f, -1.0f, 11.0f}, glm::vec2(-1.0f, -1.0f), up });
+	assets[14].tex_vertex_array.push_back({ { -11.0f, 9.0f, 11.0f}, glm::vec2(-1.0f, 1.0f), up });
+	assets[14].tex_vertex_array.push_back({ { 11.0f, 9.0, 11.0f }, glm::vec2(1.0f, 1.0f), up });
+	assets[14].tex_vertex_array.push_back({ { 11.0f, 9.0f, 11.0f}, glm::vec2(1.0f, 1.0f), up });
+	assets[14].tex_vertex_array.push_back({ { 11.0f, -1.0f, 11.0f}, glm::vec2(1.0f, -1.0f), up });
+	assets[14].tex_vertex_array.push_back({ { -11.0f, -1.0f, 11.0f }, glm::vec2(-1.0f, -1.0f), up});
+	assets[14].indices_array = { 0, 1, 2, 3, 4, 5};
+	PrepareVAO(14);
+
+	// === Colored objects ===
+	int index;
+	
+	// Front right corner
+	index = 1;
+	assets[index].type = asset_type_color;
+	//setup color, scale and coordinates for object
+	assets[index].color = { 0.3, 0.3, 0.3 };
+	assets[index].scale = { 1, 1, 1 };
+	assets[index].coord = { -10.5, -0.5, 10.5 };
+	//load object from file
+	loadOBJ("resources/obj/cube.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+	//setup vertex array
+	PrepareVAO(1);
+
+	// Back left corner
+	index = 2;
+	assets[index].type = asset_type_color;
+	assets[index].color = { 0.3, 0.3, 0.3 };
+	assets[index].scale = { 1, 1, 1 };
+	assets[index].coord = { 10.5, -0.5, -10.5 };
+	loadOBJ("resources/obj/cube.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+	PrepareVAO(2);
+
+	// Right barrier
+	index = 3;
+	assets[index].type = asset_type_color;
+	assets[index].color = { 0.3, 0.3, 0.3 };
+	assets[index].scale = { 1, 1, 20 };
+	assets[index].coord = { -10.5, -0.5, 0 };
+	loadOBJ("resources/obj/cube.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+	PrepareVAO(3);
+
+	// Left barrier
+	index = 4;
+	assets[index].type = asset_type_color;
+	assets[index].color = { 0.3, 0.3, 0.3 };
+	assets[index].scale = { 1, 1, 20 };
+	assets[index].coord = { 10.5, -0.5, 0 };
+	loadOBJ("resources/obj/cube.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+	PrepareVAO(4);
+
+	// Back barrier
+	index = 5;
+	assets[index].type = asset_type_color;
+	assets[index].color = { 0.3, 0.3, 0.3 };
+	assets[index].scale = { 20, 1, 1 };
+	assets[index].coord = { 0, -0.5, -10.5 };
+	loadOBJ("resources/obj/cube.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+	PrepareVAO(5);
+
+	// Front barrier
+	index = 6;
+	assets[index].type = asset_type_color;
+	assets[index].color = { 0.3, 0.3, 0.3 };
+	assets[index].scale = { 20, 1, 1 };
+	assets[index].coord = { 0, -0.5, 10.5 };
+	loadOBJ("resources/obj/cube.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+	PrepareVAO(6);
+
+	// Front left corner
+	index = 7;
+	assets[index].type = asset_type_color;
+	assets[index].color = { 0.3, 0.3, 0.3 };
+	assets[index].scale = { 1, 1, 1 };
+	assets[index].coord = { 10.5, -0.5, 10.5 };
+	loadOBJ("resources/obj/cube.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+	PrepareVAO(7);
+
+	// Back right corner
+	index = 8;
+	assets[index].type = asset_type_color;
+	assets[index].color = { 0.3, 0.3, 0.3 };
+	assets[index].scale = { 1, 1, 1 };
+	assets[index].coord = { -10.5, -0.5, -10.5 };
+	loadOBJ("resources/obj/cube.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+	PrepareVAO(8);
+	
+	// Middle Crate
+	index = 9;
+	assets[index].type = asset_type_texture;
+	assets[index].color = { 0.7, 0.7, 0.0 };
+	assets[index].scale = { 2, 2, 2 };
+	assets[index].coord = { 0, 0, 0 };
+	loadOBJ("resources/obj/cube.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+	
+	for (int i = 0; i < (int)(assets[index].vertex_array.size()); i++)
+	{
+		assets[index].tex_vertex_array.push_back({ assets[index].vertex_array[i].position, assets[index].vertex_array[i].texCoor, assets[index].vertex_array[i].normal });
+	}
+	
+	PrepareVAO(9);
+
+	// Chasing ball
+	index = 10;
+	//asset_type_texture
+	assets[index].type = asset_type_texture;
+	assets[index].color = { 1, 1, 1 };
+	assets[index].scale = { 0.2f, 0.2f, 0.2f };
+	assets[index].coord = { 0, 0, 0 };
+	loadOBJ("resources/obj/mic.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+
+	for (int i = 0; i < (int)(assets[index].vertex_array.size()); i++)
+	{
+		assets[index].tex_vertex_array.push_back({ assets[index].vertex_array[i].position, assets[index].vertex_array[i].texCoor, assets[index].vertex_array[i].normal });
+	}
+	
+	PrepareVAO(10);
+
+	// Glove
+	index = 11;
+	assets[index].type = asset_type_color;
+	assets[index].color = { 1, 0.1, 0.1 };
+	assets[index].scale = { 0.001, 0.001, 0.001 };
+	assets[index].coord = { 0, 0, 0 };
+	loadOBJ("resources/obj/work_glove.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+	PrepareVAO(11);
+
+	// Hopping bunny
+	index = 12;
+	assets[index].type = asset_type_color;
+	assets[index].color = { 0.7, 7.0, 0.2 };
+	assets[index].scale = { 0.1, 0.1, 0.1 };
+	assets[index].coord = { 0, 0, 0 };
+	loadOBJ("resources/obj/bunny_tri_vnt.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+	PrepareVAO(12);
+
+	// Sad transparentish teapot
+	index = 16;
+	assets[index].type = asset_type_color;
+	assets[index].color = { 0.1, 1.0, 0.1 };
+	assets[index].scale = { 0.1, 0.1, 0.1 };
+	assets[index].coord = { -9.5, 0.0, -9.5 };
+	loadOBJ("resources/obj/teapot.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+	PrepareVAO(16);
+
+	//choose objects with collisions
+	int j = 0;
+	for (int i : {1, 2, 3, 4, 5, 6, 7, 8, 9}) {
+		col_obj[j] = assets[i].vertex_array;
+		j++;
+	}
+
+	// Initialize collision coords for the objects
+	init_object_coords();
+	init_ball_coords();
+}
+
+/* Generates a texture object from an image file
+* filepath: path to the image file
+* returns: the ID of the generated texture object
+*/
+GLuint gen_tex(std::string filepath)
 {
-    cv::Point p1(x - size / 2, y);
-    cv::Point p2(x + size / 2, y);
-    cv::Point p3(x, y - size / 2);
-    cv::Point p4(x, y + size / 2);
+	GLuint ID;
+	cv::Mat image = cv::imread(filepath);
 
-    cv::line(img, p1, p2, CV_RGB(255, 0, 0), 3);
-    cv::line(img, p3, p4, CV_RGB(255, 0, 0), 3);
+	// Generates an OpenGL texture object
+	glGenTextures(1, &ID);
+
+	// Assigns the texture to a Texture Unit
+	glBindTexture(GL_TEXTURE_2D, ID);
+
+	// Texture data alignment for transfer (single byte = basic, slow, but safe option; usually not necessary) 
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+	glHint(GL_TEXTURE_COMPRESSION_HINT, GL_NICEST);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image.cols, image.rows, 0, GL_BGR, GL_UNSIGNED_BYTE, image.data);
+	int compressed;
+	GLint internalformat, compressed_size;
+	glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_COMPRESSED_ARB, &compressed);
+	/* if the compression has been successful */
+	if (compressed == GL_TRUE)
+	{
+		glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &internalformat);
+		glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_COMPRESSED_IMAGE_SIZE_ARB, &compressed_size);
+		std::cout << "ORIGINAL: " << image.total() * image.elemSize() << " COMPRESSED: " << compressed_size << " INTERNAL FORMAT: " << internalformat << std::endl;
+	}
+
+	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+
+	// Configures the way the texture repeats
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+
+	glGenerateMipmap(GL_TEXTURE_2D);
+
+	// Unbinds the OpenGL Texture object so that it can't accidentally be modified
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	return ID;
 }
 
-void draw_cross_relative(cv::Mat& img, cv::Point2f center_relative, int size)
-{
-    center_relative.x = std::clamp(center_relative.x, 0.0f, 1.0f);
-    center_relative.y = std::clamp(center_relative.y, 0.0f, 1.0f);
-    size = std::clamp(size, 1, std::min(img.cols, img.rows));
+/* Prepares the VAO for the given asset
+* @param index - the index of the asset in the assets array
+* @return the VAO of the asset
+*/
+GLuint PrepareVAO(int index) {
 
-    cv::Point2f center_absolute(center_relative.x * img.cols, center_relative.y * img.rows);
+	GLuint resultVAO = glCreateShader(GL_VERTEX_SHADER); //just something to stop compile errors
 
-    cv::Point2f p1(center_absolute.x - size / 2, center_absolute.y);
-    cv::Point2f p2(center_absolute.x + size / 2, center_absolute.y);
-    cv::Point2f p3(center_absolute.x, center_absolute.y - size / 2);
-    cv::Point2f p4(center_absolute.x, center_absolute.y + size / 2);
+	// Generate the VAO and VBO
+	glGenVertexArrays(1, &assets[index].VAO);
+	glGenBuffers(1, &assets[index].VBO);
+	glGenBuffers(1, &assets[index].EBO);
+	// Bind VAO (set as the current)
+	glBindVertexArray(assets[index].VAO);
+	// Bind the VBO, set type as GL_ARRAY_BUFFER
+	glBindBuffer(GL_ARRAY_BUFFER, assets[index].VBO);
 
-    cv::line(img, p1, p2, CV_RGB(0, 0, 255), 2);
-    cv::line(img, p3, p4, CV_RGB(0, 0, 255), 2);
+	if (assets[index].type == asset_type_texture) 
+	{
+		// Fill-in data into the VBO
+		glBufferData(GL_ARRAY_BUFFER, assets[index].tex_vertex_array.size() * sizeof(tex_vertex), assets[index].tex_vertex_array.data(), GL_DYNAMIC_DRAW);
+		// Bind EBO, set type GL_ELEMENT_ARRAY_BUFFER
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, assets[index].EBO);
+		// Fill-in data into the EBO
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, assets[index].indices_array.size() * sizeof(GLuint), assets[index].indices_array.data(), GL_DYNAMIC_DRAW);
+		// Set Vertex Attribute to explain OpenGL how to interpret the VBO
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(tex_vertex), (void*)(0 + offsetof(tex_vertex, position)));
+		// Enable the Vertex Attribute 0 = position
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(tex_vertex), (void*)(0 + offsetof(tex_vertex, texcoord)));
+		glEnableVertexAttribArray(1);
+
+		// TEST
+		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(tex_vertex), (void*)(0 + offsetof(tex_vertex, normal)));
+		glEnableVertexAttribArray(2);
+	}
+	else if (assets[index].type == asset_type_color)
+	{
+		// Fill-in data into the VBO
+		glBufferData(GL_ARRAY_BUFFER, assets[index].vertex_array.size() * sizeof(vertex), assets[index].vertex_array.data(), GL_DYNAMIC_DRAW);
+		// Bind EBO, set type GL_ELEMENT_ARRAY_BUFFER
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, assets[index].EBO);
+		// Fill-in data into the EBO
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, assets[index].indices_array.size() * sizeof(GLuint), assets[index].indices_array.data(), GL_DYNAMIC_DRAW);
+		// Set Vertex Attribute to explain OpenGL how to interpret the VBO
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(0 + offsetof(vertex, position)));
+		// Enable the Vertex Attribute 0 = position
+		glEnableVertexAttribArray(0);
+		// Set end enable Vertex Attribute 1 = Texture Coordinates
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(0 + offsetof(vertex, color)));
+		glEnableVertexAttribArray(1);
+
+		// TEST
+		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(0 + offsetof(vertex, normal)));
+		glEnableVertexAttribArray(2);
+	}
+
+	// Bind VBO and VAO to 0 to prevent unintended modification
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+	return resultVAO;
+}
+
+void make_shader(std::string vertex_shader, std::string fragment_shader, GLuint* shader) {
+	GLuint VS_h, FS_h, prog_h;
+	VS_h = glCreateShader(GL_VERTEX_SHADER);
+	FS_h = glCreateShader(GL_FRAGMENT_SHADER);
+
+	// vert
+	std::string VSsrc = textFileRead(vertex_shader);
+	const char* VS_string = VSsrc.c_str();
+	// frag
+	std::string FSsrc = textFileRead(fragment_shader);
+	const char* FS_string = FSsrc.c_str();
+	glShaderSource(VS_h, 1, &VS_string, NULL);
+	glShaderSource(FS_h, 1, &FS_string, NULL);
+
+	// compile and use shaders
+	glCompileShader(VS_h);
+	getShaderInfoLog(VS_h);
+	glCompileShader(FS_h);
+	getShaderInfoLog(FS_h);
+	prog_h = glCreateProgram();
+	glAttachShader(prog_h, VS_h);
+	glAttachShader(prog_h, FS_h);
+	glLinkProgram(prog_h);
+	getProgramInfoLog(prog_h);
+	*shader = prog_h;
+
+	// check if vertex shader, fragment shader compiled successfuly and program linked
+	GLint success = 0;
+	std::cout << "Success false = " << GL_FALSE << std::endl;
+	glGetShaderiv(VS_h, GL_COMPILE_STATUS, &success);
+	std::cout << "Vertex shader " << success << std::endl;
+	glGetShaderiv(FS_h, GL_COMPILE_STATUS, &success);
+	std::cout << "Fragment shader " << success << std::endl;
+	glGetProgramiv(prog_h, GL_LINK_STATUS, &success);
+	std::cout << "Program linking " << success << std::endl;
+}
+
+void draw_textured(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix) {
+	glUseProgram(prog_tex);
+	glUniformMatrix4fv(glGetUniformLocation(prog_tex, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
+	glUniformMatrix4fv(glGetUniformLocation(prog_tex, "uV_m"), 1, GL_FALSE, glm::value_ptr(v_m));
+	glUniformMatrix4fv(glGetUniformLocation(prog_tex, "uP_m"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+
+	// set light color for shader
+	glUniform4f(glGetUniformLocation(prog_tex, "lightColor"), 1.0f, 0.5f, 0.5f, 1.0f);
+	// set light pos in above player for shaders
+	glUniform3f(glGetUniformLocation(prog_tex, "lightPos"), player_position.x / 2, player_position.y / 2 + 1.0f, player_position.z / 2);
+	// set camera pos for shaders
+	glUniform3f(glGetUniformLocation(prog_tex, "camPos"), player_position.x, player_position.y, player_position.z);
+
+	//set texture unit
+	glActiveTexture(GL_TEXTURE0);
+
+	//send texture unit number to FS
+	glUniform1i(glGetUniformLocation(prog_tex, "tex0"), 0);
+
+	// draw object using VAO (Bind + DrawElements + Unbind)
+	glBindVertexArray(assets[0].VAO);
+	glBindTexture(GL_TEXTURE_2D, texture_id[0]);
+	glDrawElements(GL_TRIANGLES, assets[0].indices_array.size(), GL_UNSIGNED_INT, 0);
+
+	glBindVertexArray(assets[14].VAO);
+	glBindTexture(GL_TEXTURE_2D, texture_id[1]);
+	glDrawElements(GL_TRIANGLES, assets[14].indices_array.size(), GL_UNSIGNED_INT, 0);
+
+	glBindVertexArray(assets[9].VAO);
+	glBindTexture(GL_TEXTURE_2D, texture_id[2]);
+	glDrawElements(GL_TRIANGLES, assets[9].indices_array.size(), GL_UNSIGNED_INT, 0);
+
+	glBindVertexArray(assets[10].VAO);
+	glBindTexture(GL_TEXTURE_2D, texture_id[3]);
+	glDrawElements(GL_TRIANGLES, assets[10].indices_array.size(), GL_UNSIGNED_INT, 0);
+
+	glUseProgram(prog_h);
+}
+
+void draw_transparent(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix) {
+	glUseProgram(prog_transp);
+
+	glEnable(GL_BLEND);			// enable blending
+	glDisable(GL_CULL_FACE);	// no polygon removal
+	glDepthMask(GL_FALSE);		// set Z to read-only
+
+	glUniformMatrix4fv(glGetUniformLocation(prog_transp, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
+	glUniformMatrix4fv(glGetUniformLocation(prog_transp, "uV_m"), 1, GL_FALSE, glm::value_ptr(v_m));
+	glUniformMatrix4fv(glGetUniformLocation(prog_transp, "uP_m"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+
+	// set light color for shader
+	glUniform4f(glGetUniformLocation(prog_transp, "lightColor"), 1.0f, 0.5f, 0.5f, 1.0f);
+	// set light pos in above player for shaders
+	glUniform3f(glGetUniformLocation(prog_transp, "lightPos"), player_position.x / 2, player_position.y / 2 + 1.0f, player_position.z / 2);
+	// set camera pos for shaders
+	glUniform3f(glGetUniformLocation(prog_transp, "camPos"), player_position.x, player_position.y, player_position.z);
+	// set transparency for shaders
+	glUniform1f(glGetUniformLocation(prog_transp, "transparency"), 0.5f);
+
+
+	glBindVertexArray(assets[16].VAO);
+	glDrawElements(GL_TRIANGLES, assets[16].indices_array.size(), GL_UNSIGNED_INT, 0);
+
+
+	glDisable(GL_BLEND);
+	glEnable(GL_CULL_FACE);
+	glDepthMask(GL_TRUE);
+
+	glUseProgram(prog_h);
 }
