@@ -98,6 +98,7 @@ s_globals globals;
 glm::vec3 player_position(-10.0f, 1.0f, -10.0f);
 glm::vec3 ball_position(0.0f, 0.0f, 0.0f);
 glm::vec3 looking_position(10.0f, 1.0f, 10.0f);
+glm::vec3 teapod_1_position(0.0f, 2.0f, 0.0f);
 glm::vec3 up(0, 1, 0);
 
 GLfloat Yaw = -90.0f;
@@ -111,7 +112,6 @@ GLfloat lastypos = 0.0f;
 // movement and sound help variables
 int step_delay = 0;
 bool oofing = true;
-int move_count = 0;
 
 
 // === Asset Storage ===
@@ -700,21 +700,18 @@ int main()
 			glDrawElements(GL_TRIANGLES, assets[11].indices_array.size(), GL_UNSIGNED_INT, 0);
 			m_m = temp;
 
-			// move teapot on edge
+			// move teapot in the center
 			temp = m_m;
-			int edge = 21000;
-			glm::vec3 change = (move_count < edge * 2) ?
-				((move_count < edge) ? glm::vec3(move_count * 0.001f, 0, 0) : glm::vec3(edge * 0.001f, 0, move_count * 0.001f - edge * 0.001f)) :
-				((move_count < edge * 3) ? glm::vec3(edge * 0.003f - move_count * 0.001f, 0, edge / 1000) : glm::vec3(0, 0, edge * 0.004f - move_count * 0.001f));
-			m_m = glm::translate(m_m, change);
+
+		
+			glm::vec3 teapot_1_offset = glm::vec3(0, std::sin((float)glfwGetTime())*0.8, 0);
+			glm::vec3 teapot_bop = (teapod_1_position + teapot_1_offset);
+			m_m = glm::rotate(m_m, glm::radians(90.0f * (float)glfwGetTime()), glm::vec3(0.0f, 1.0f, 0.0f));
+			m_m = glm::translate(m_m, teapot_bop);
 			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
 			glBindVertexArray(assets[12].VAO);
 			glDrawElements(GL_TRIANGLES, assets[12].indices_array.size(), GL_UNSIGNED_INT, 0);
 			m_m = temp;
-			move_count++;
-			if (move_count == edge * 4) {
-				move_count = 0;
-			}
 			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
 
 			// textured object draw
@@ -1002,9 +999,9 @@ void setup_objects() {
 
 	index = 12;
 	assets[index].type = asset_type_color;
-	assets[index].color = { 0.1, 1.0, 0.1 };
+	assets[index].color = { 0.7, 7.0, 0.2 };
 	assets[index].scale = { 0.1, 0.1, 0.1 };
-	assets[index].coord = { -10.5, 0.0, -10.5 };
+	assets[index].coord = { 0, 0, 0 };
 	loadOBJ("resources/obj/teapot.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
 	PrepareVAO(12);
 
