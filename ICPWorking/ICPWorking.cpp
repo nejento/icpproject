@@ -760,7 +760,7 @@ void update_player_position()
 }
 
 /* 
-* Plays the walking sound every 32 steps.
+* Plays the walking sound
 */
 void play_walk_sound() {
 	if (step_counter < 1 && !played_left) {
