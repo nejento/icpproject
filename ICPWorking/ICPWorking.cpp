@@ -26,6 +26,8 @@
 // OpenGL math
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
+
+// irrKlang sound engine
 #include <irrklang/irrKlang.h>
 
 // Other Header files
@@ -37,21 +39,12 @@ void init_glew(void);
 void init_glfw(void);
 void error_callback(int error, const char* description);
 void finalize(int code);
-void update_player_position();
-
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
-void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
-void cursor_position_callback(GLFWwindow* window, double xpos, double ypos);
-
+void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
 std::string getProgramInfoLog(const GLuint obj);
 std::string getShaderInfoLog(const GLuint obj);
 std::string textFileRead(const std::string fn);
 
-// create sound engine
-irrklang::ISoundEngine* engine = irrklang::createIrrKlangDevice();
-
-void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
+irrklang::ISoundEngine* engine = irrklang::createIrrKlangDevice(); // Sound engine
 
 void setup_objects();
 GLuint PrepareVAO(int index);
@@ -60,6 +53,12 @@ GLuint gen_tex(std::string filepath);
 void make_shader(std::string vertex_shader, std::string fragment_shader, GLuint* shader);
 void draw_textured(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix);
 void draw_transparent(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix);
+
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+void cursor_position_callback(GLFWwindow* window, double xpos, double ypos);
+void update_player_position();
 
 glm::vec3 check_collision(float x, float z);
 std::array<bool, 3> check_objects_collisions(float x, float z);
