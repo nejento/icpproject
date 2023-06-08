@@ -34,7 +34,7 @@ cv::Point2f find_center_HSV(cv::Mat& frame);
 void run_2D_raster_processing() {
 	cv::Mat frame = cv::imread("resources/HSV-MAP.png");
 	globals.capture = cv::VideoCapture(cv::CAP_DSHOW);
-	globals.capture = cv::VideoCapture("resources/video.mkv");
+	//globals.capture = cv::VideoCapture("resources/video.mkv");
 	if (!globals.capture.isOpened()) //pokud neni kamera otevøená
 	{
 		std::cerr << "no camera" << std::endl;

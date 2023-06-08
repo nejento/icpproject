@@ -30,7 +30,7 @@
 
 // Other Header files
 #include "OBJloader.h"
-
+#include "RealtimeRasterProcessing.h"
 
 // === Headers ===
 void init_glew(void);
@@ -523,7 +523,14 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 //=== Main === 
 int main()
 {
-
+	std::cout << "Type \"r\" and comfirm with ENTER for realtime raster processing or anything else for the OpenGL application.\n";
+	char c;
+	std::cin.get(c);
+	
+	if (c == 'r') {
+		run_2D_raster_processing();
+		return 0 ;
+	}
 	// === Random number generator ===
 	std::mt19937_64 rng;
 	// initialize the random number generator with time-dependent seed
