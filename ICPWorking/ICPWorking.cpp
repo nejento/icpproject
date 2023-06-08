@@ -1,7 +1,3 @@
-/* TODO
-* - Vzít movement ze starého projektu, fungoval imo lépe s voláním HandleCameraMovement
-*/
-
 //=== Includes ===
 // C++ 
 #include <iostream>
