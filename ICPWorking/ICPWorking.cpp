@@ -945,11 +945,16 @@ void setup_objects() {
 
 	index = 10;
 	//asset_type_texture
-	assets[index].type = asset_type_color;
+	assets[index].type = asset_type_texture;
 	assets[index].color = { 1, 1, 1 };
 	assets[index].scale = { 0.2f, 0.2f, 0.2f };
 	assets[index].coord = { 0, 0, 0 };
 	loadOBJ("resources/obj/mic.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+	for (int i = 0; i < (int)(assets[index].vertex_array.size()); i++)
+	{
+		assets[index].tex_vertex_array.push_back({ assets[index].vertex_array[i].position, assets[index].vertex_array[i].texCoor, assets[index].vertex_array[i].normal });
+	}
+	
 	PrepareVAO(10);
 
 	index = 11;
@@ -1176,6 +1181,10 @@ void draw_textured(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix) {
 	glBindVertexArray(assets[9].VAO);
 	glBindTexture(GL_TEXTURE_2D, texture_id[3]);
 	glDrawElements(GL_TRIANGLES, assets[9].indices_array.size(), GL_UNSIGNED_INT, 0);
+
+	glBindVertexArray(assets[10].VAO);
+	glBindTexture(GL_TEXTURE_2D, texture_id[4]);
+	glDrawElements(GL_TRIANGLES, assets[10].indices_array.size(), GL_UNSIGNED_INT, 0);
 
 	glUseProgram(prog_h);
 }
