@@ -726,24 +726,68 @@ int main()
 	return (EXIT_SUCCESS);
 }
 
+/*
+* Updates the player position based on the set flags. If moving plays the walking sound.
+*/
+void update_player_position()
+{
+	float speed = 35.0f * delta_t;
+	bool should_play = false;
 
+	if (move_right_flag) {
+		glm::vec3 xz = player_position + speed * glm::normalize(glm::cross(looking_position, up));
+		player_position = check_collision(xz.x, xz.z);
+		should_play = true;
+	}
+	if (move_left_flag) {
+		glm::vec3 xz = player_position - speed * glm::normalize(glm::cross(looking_position, up));
+		player_position = check_collision(xz.x, xz.z);
+		should_play = true;
+	}
+	if (move_forward_flag) {
+		glm::vec3 xz = player_position + speed * glm::normalize(looking_position);
+		player_position = check_collision(xz.x, xz.z);
+		should_play = true;
+	}
+	if (move_backward_flag) {
+		glm::vec3 xz = player_position - speed * glm::normalize(looking_position);
+		player_position = check_collision(xz.x, xz.z);
+		should_play = true;
+	}
+	if (should_play) play_walk_sound();
+}
+
+/* 
+* Plays the walking sound every 32 steps.
+*/
+void play_walk_sound() {
+	if (step_counter == 0)    engine->play2D("resources/sounds/run1.wav");
+	if (step_counter == 32)   engine->play2D("resources/sounds/run2.wav");
+	if (step_counter++ == 64) step_counter = 0;
+}
+
+/*
+* Checks if the player would collide with any object if he moved to the given position.
+* If colliding, moves the player only on the axis where the collision would not happen.
+*/
 glm::vec3 check_collision(float x, float z) {
 	std::array<bool, 3> col = check_objects_collisions(x, z);
-	if (col[0]) {
-		//if object isn't in bounds of any object, move freely
+	if (col[0]) { // No collision, move on both axes
 		player_position.x = x;
 		player_position.z = z;
 	}
 	else {
-		if (col[1])
-			player_position.x = x; //if x step would not be in object bounds, move only on x axis
-		if (col[2]) 
-			player_position.z = z; //if z step would not be in object bounds, move only on z axis
-		
+		if (col[1]) //Collision on Z, move only on X
+			player_position.x = x;
+		if (col[2]) //Collision on X, move only on Z
+			player_position.z = z;
 	}
 	return player_position;
 }
 
+/*
+* Checks collision with set collision squares of set objects
+*/
 std::array<bool, 3> check_objects_collisions(float x, float z) {
 	std::array<bool, 3> col = { true, true, true };
 	for (coords c : objects_coords) {
@@ -764,7 +808,9 @@ std::array<bool, 3> check_objects_collisions(float x, float z) {
 	return col;
 }
 
-
+/*
+* Checks if the player is colliding with the ball's collision box. If it is, plays the oof sound.
+*/
 void check_ball_collision() {
 	glm::vec3 p_p = player_position * 0.5f;
 	//if (player_position.x * 0.5f > ball_coords.min_x && player_position.x * 0.5f < ball_coords.max_x && player_position.z * 0.5f > ball_coords.min_z && player_position.z * 0.5f < ball_coords.max_z)
@@ -777,9 +823,10 @@ void check_ball_collision() {
 	else oofing = false;
 }
 
-
+/*
+* Initializes the max and min x and z coordinates of the objects for collision squares based on posision of the vertices.
+*/
 void init_object_coords() {
-	//get min and max coords for objects (used in collision logic)
 	for (int i = 0; i < n_col_obj; i++) {
 		objects_coords[i].min_x = 999;
 		objects_coords[i].max_x = -999;
@@ -802,6 +849,10 @@ void init_object_coords() {
 	}
 }
 
+/*
+* Initializes the max and min x and z coordinates of the ball for collision square based on posision of the vertices.
+* Collisions are then only updated based on the offset of the chasing ball.
+*/
 void init_ball_coords() {
 	ball_coords.min_x = 999;
 	ball_coords.max_x = -999;
@@ -824,7 +875,7 @@ void init_ball_coords() {
 }
 
 /*
-* Setup objects
+* Setup colors, vertices, coords and scales of the assets.
 */
 void setup_objects() {
 
@@ -1221,38 +1272,4 @@ void draw_transparent(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix) 
 	glDepthMask(GL_TRUE);
 
 	glUseProgram(prog_h);
-}
-
-void update_player_position()
-{
-	float speed = 35.0f * delta_t;
-	bool should_play = false;
-
-	if (move_right_flag) {
-		glm::vec3 xz = player_position + speed * glm::normalize(glm::cross(looking_position, up));
-		player_position = check_collision(xz.x, xz.z);
-		should_play = true;
-	}
-	if (move_left_flag) {
-		glm::vec3 xz = player_position - speed * glm::normalize(glm::cross(looking_position, up));
-		player_position = check_collision(xz.x, xz.z);
-		should_play = true;
-	}
-	if (move_forward_flag) {
-		glm::vec3 xz = player_position + speed * glm::normalize(looking_position);
-		player_position = check_collision(xz.x, xz.z);
-		should_play = true;
-	}
-	if (move_backward_flag) {
-		glm::vec3 xz = player_position - speed * glm::normalize(looking_position);
-		player_position = check_collision(xz.x, xz.z);
-		should_play = true;
-	}
-	if (should_play) play_walk_sound();
-}
-
-void play_walk_sound() {
-	if (step_counter == 0)    engine->play2D("resources/sounds/run1.wav");
-	if (step_counter == 32)   engine->play2D("resources/sounds/run2.wav");
-	if (step_counter++ == 64) step_counter = 0;
 }
