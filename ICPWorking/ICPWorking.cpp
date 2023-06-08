@@ -1,3 +1,5 @@
+// ICP Projekt
+
 //=== Includes ===
 // C++ 
 #include <iostream>
@@ -69,13 +71,6 @@ void play_walk_sound();
 
 
 // === Globals ===
-typedef struct image_data {
-	cv::Point2f center;
-	cv::Mat frame;
-} image_data;
-
-//std::unique_ptr<image_data> image_data_shared;
-
 typedef struct s_globals {
 	GLFWwindow* window;
 	int height;
@@ -90,9 +85,6 @@ typedef struct s_globals {
 } s_globals;
 
 s_globals globals;
-
-//std::mutex img_access_mutex;
-//bool image_proccessing_alive;
 
 // player & position
 glm::vec3 player_position(-10.0f, 1.0f, -10.0f);
@@ -110,7 +102,7 @@ GLfloat lastypos = 0.0f;
 #define array_cnt(a) ((unsigned int)(sizeof(a) / sizeof(a[0])))
 
 // movement and sound help variables
-int step_delay = 0;
+int step_counter = 0;
 bool oofing = true;
 
 
@@ -587,10 +579,9 @@ int main()
 
 	// Načtení textur
 	texture_id[0] = gen_tex("resources/textures/grass.jpg");
-	texture_id[1] = gen_tex("resources/textures/concrete.png");
-	texture_id[2] = gen_tex("resources/textures/brick_wall_texture.jpg");
-	texture_id[3] = gen_tex("resources/textures/box.png");
-	texture_id[4] = gen_tex("resources/textures/mic_textura.jpg");
+	texture_id[1] = gen_tex("resources/textures/brick_wall_texture.jpg");
+	texture_id[2] = gen_tex("resources/textures/box.png");
+	texture_id[3] = gen_tex("resources/textures/mic_textura.jpg");
 
 	// === Main Loop ===
 	while (!glfwWindowShouldClose(globals.window)) {
@@ -841,10 +832,9 @@ void init_ball_coords() {
 void setup_objects() {
 
 	// === Textured objects ===
-
 	glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
 
-	// textured 0 grass
+	// Textured Grass
 	assets[0].type = asset_type_texture;
 	assets[0].tex_vertex_array.push_back({ {-10.0f, -0.9f, -10.0f}, glm::vec2(-5.0f, -5.0f), up });
 	assets[0].tex_vertex_array.push_back({ { -10.0f, -0.9f, 10.0f}, glm::vec2(-5.0f, 5.0f), up });
@@ -855,15 +845,7 @@ void setup_objects() {
 	assets[0].indices_array = { 0, 1, 2 , 3, 4, 5};
 	PrepareVAO(0);
 
-	// textured 1
-	assets[13].type = asset_type_texture;
-	assets[13].tex_vertex_array.push_back({ { 10.0f, -1.0f, 10.0f }, glm::vec2(-10.0f, 10.0f), up });
-	assets[13].tex_vertex_array.push_back({ { 10.0f, -1.0f, -10.0f}, glm::vec2(10.0f, 10.0f), up });
-	assets[13].tex_vertex_array.push_back({ { 0.0f, -1.0f, 0.0f}, glm::vec2(0.0f, 0.0f), up });
-	assets[13].indices_array = { 0, 1, 2 };
-	PrepareVAO(13);
-
-	// textured 2 brick wall
+	// Textured Brick Wall
 	assets[14].type = asset_type_texture;
 	assets[14].tex_vertex_array.push_back({ { -11.0f, -1.0f, 11.0f}, glm::vec2(-1.0f, -1.0f), up });
 	assets[14].tex_vertex_array.push_back({ { -11.0f, 9.0f, 11.0f}, glm::vec2(-1.0f, 1.0f), up });
@@ -872,17 +854,7 @@ void setup_objects() {
 	assets[14].tex_vertex_array.push_back({ { 11.0f, -1.0f, 11.0f}, glm::vec2(1.0f, -1.0f), up });
 	assets[14].tex_vertex_array.push_back({ { -11.0f, -1.0f, 11.0f }, glm::vec2(-1.0f, -1.0f), up});
 	assets[14].indices_array = { 0, 1, 2, 3, 4, 5};
-
 	PrepareVAO(14);
-
-	// textured 3
-	assets[15].type = asset_type_texture;
-	assets[15].tex_vertex_array.push_back({ { -10.0f, -1.0f, 10.0f}, glm::vec2(-10.0f, 10.0f), up });
-	assets[15].tex_vertex_array.push_back({ { 10.0f, -1.0f, 10.0f }, glm::vec2(10.0f, 10.0f), up });
-	assets[15].tex_vertex_array.push_back({ { 0.0f, -1.0f, 0.0f}, glm::vec2(0.0f, 0.0f), up });
-	assets[15].indices_array = { 0, 1, 2 };
-	PrepareVAO(15);
-
 
 	// === Colored objects ===
 	int index;
@@ -1027,6 +999,7 @@ void setup_objects() {
 		j++;
 	}
 
+	// Initialize collision coords for the objects
 	init_object_coords();
 	init_ball_coords();
 }
@@ -1206,24 +1179,16 @@ void draw_textured(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix) {
 	glBindTexture(GL_TEXTURE_2D, texture_id[0]);
 	glDrawElements(GL_TRIANGLES, assets[0].indices_array.size(), GL_UNSIGNED_INT, 0);
 
-	glBindVertexArray(assets[13].VAO);
-	glBindTexture(GL_TEXTURE_2D, texture_id[1]);
-	glDrawElements(GL_TRIANGLES, assets[13].indices_array.size(), GL_UNSIGNED_INT, 0);
-
 	glBindVertexArray(assets[14].VAO);
-	glBindTexture(GL_TEXTURE_2D, texture_id[2]);
+	glBindTexture(GL_TEXTURE_2D, texture_id[1]);
 	glDrawElements(GL_TRIANGLES, assets[14].indices_array.size(), GL_UNSIGNED_INT, 0);
 
-	glBindVertexArray(assets[15].VAO);
-	glBindTexture(GL_TEXTURE_2D, texture_id[3]);
-	glDrawElements(GL_TRIANGLES, assets[15].indices_array.size(), GL_UNSIGNED_INT, 0);
-
 	glBindVertexArray(assets[9].VAO);
-	glBindTexture(GL_TEXTURE_2D, texture_id[3]);
+	glBindTexture(GL_TEXTURE_2D, texture_id[2]);
 	glDrawElements(GL_TRIANGLES, assets[9].indices_array.size(), GL_UNSIGNED_INT, 0);
 
 	glBindVertexArray(assets[10].VAO);
-	glBindTexture(GL_TEXTURE_2D, texture_id[4]);
+	glBindTexture(GL_TEXTURE_2D, texture_id[3]);
 	glDrawElements(GL_TRIANGLES, assets[10].indices_array.size(), GL_UNSIGNED_INT, 0);
 
 	glUseProgram(prog_h);
@@ -1290,7 +1255,7 @@ void update_player_position()
 }
 
 void play_walk_sound() {
-	if (step_delay == 0) { engine->play2D("resources/sounds/run1.wav"); }
-	if (step_delay == 32) { engine->play2D("resources/sounds/run2.wav"); }
-	if (step_delay++ == 64) { step_delay = 0; }
+	if (step_counter == 0)    engine->play2D("resources/sounds/run1.wav");
+	if (step_counter == 32)   engine->play2D("resources/sounds/run2.wav");
+	if (step_counter++ == 64) step_counter = 0;
 }
