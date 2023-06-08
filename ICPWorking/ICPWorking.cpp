@@ -30,7 +30,7 @@
 // OpenGL math
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
-//#include <irrklang/irrKlang.h>
+#include <irrklang/irrKlang.h>
 
 // Other Header files
 #include "OBJloader.h"
@@ -53,9 +53,7 @@ std::string getShaderInfoLog(const GLuint obj);
 std::string textFileRead(const std::string fn);
 
 // create sound engine
-/*
 irrklang::ISoundEngine* engine = irrklang::createIrrKlangDevice();
-*/
 
 void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
 
@@ -72,7 +70,6 @@ std::array<bool, 3> check_objects_collisions(float x, float z);
 void check_ball_collision();
 void init_object_coords();
 void init_ball_coords();
-
 
 
 // === Globals ===
@@ -117,7 +114,7 @@ GLfloat lastypos = 0.0f;
 
 // movement and sound help variables
 int step_delay = 0;
-bool ouch_ready = true;
+bool oofing = true;
 int move_count = 0;
 
 
@@ -757,28 +754,16 @@ glm::vec3 check_collision(float x, float z) {
 		//if object isn't in bounds of any object, move freely
 		player_position.x = x;
 		player_position.z = z;
-		ouch_ready = true;
 	}
 	else {
-		if (col[1]) {
-			if (ouch_ready) {
-				/*engine->play2D("resources/sounds/ouch.mp3");*/
-				ouch_ready = false;
-			}
-			//if x step would not be in object bounds, move only on x axis
-			player_position.x = x;
-		}
-		if (col[2]) {
-			if (ouch_ready) {
-				/*engine->play2D("resources/sounds/ouch.mp3");*/
-				ouch_ready = false;
-			}
-			//if z step would not be in object bounds, move only on z axis
-			player_position.z = z;
-		}
+		if (col[1])
+			player_position.x = x; //if x step would not be in object bounds, move only on x axis
+		if (col[2]) 
+			player_position.z = z; //if z step would not be in object bounds, move only on z axis
+		
 	}
-	if (step_delay == 0 && ouch_ready) { /*engine->play2D("resources/sounds/step1.mp3");*/ }
-	if (step_delay == 8 && ouch_ready) { /*engine->play2D("resources/sounds/step2.mp3");*/ }
+	if (step_delay == 0 /* && ouch_ready*/) { /*engine->play2D("resources/sounds/step1.mp3");*/ }
+	if (step_delay == 8 /* && ouch_ready*/) { /*engine->play2D("resources/sounds/step2.mp3");*/ }
 	if (step_delay++ == 16) { step_delay = 0; }
 	return player_position;
 }
@@ -805,11 +790,17 @@ std::array<bool, 3> check_objects_collisions(float x, float z) {
 
 
 void check_ball_collision() {
-	//if x step would be in object bounds
 	glm::vec3 p_p = player_position * 0.5f;
 	//if (player_position.x * 0.5f > ball_coords.min_x && player_position.x * 0.5f < ball_coords.max_x && player_position.z * 0.5f > ball_coords.min_z && player_position.z * 0.5f < ball_coords.max_z)
-	if (p_p.x > ball_coords.min_x && p_p.x < ball_coords.max_x && p_p.z > ball_coords.min_z && p_p.z < ball_coords.max_z)
-		std::cout << "colliding" << std::endl;
+	if (p_p.x > ball_coords.min_x && p_p.x < ball_coords.max_x && p_p.z > ball_coords.min_z && p_p.z < ball_coords.max_z) {
+		if (!oofing) {
+			engine->play2D("resources/sounds/oof.wav");
+			oofing = true;
+		}
+	}
+	else {
+		oofing = false;
+	}
 }
 
 
