@@ -523,7 +523,7 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 //=== Main === 
 int main()
 {
-
+	/*
 	// === Random number generator ===
 	std::mt19937_64 rng;
 	// initialize the random number generator with time-dependent seed
@@ -532,7 +532,7 @@ int main()
 	rng.seed(ss);
 	// initialize a uniform distribution between 0 and 1
 	std::uniform_real_distribution<double> unif(0, 1);
-
+	*/
 
 	init_glfw();
 	init_glew();
@@ -894,6 +894,7 @@ void setup_objects() {
 	// === Colored objects ===
 	int index;
 	
+	// Front right corner
 	index = 1;
 	assets[index].type = asset_type_color;
 	//setup color, scale and coordinates for object
@@ -905,6 +906,7 @@ void setup_objects() {
 	//setup vertex array
 	PrepareVAO(1);
 
+	// Back left corner
 	index = 2;
 	assets[index].type = asset_type_color;
 	assets[index].color = { 0.3, 0.3, 0.3 };
@@ -913,6 +915,7 @@ void setup_objects() {
 	loadOBJ("resources/obj/cube.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
 	PrepareVAO(2);
 
+	// Right barrier
 	index = 3;
 	assets[index].type = asset_type_color;
 	assets[index].color = { 0.3, 0.3, 0.3 };
@@ -921,6 +924,7 @@ void setup_objects() {
 	loadOBJ("resources/obj/cube.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
 	PrepareVAO(3);
 
+	// Left barrier
 	index = 4;
 	assets[index].type = asset_type_color;
 	assets[index].color = { 0.3, 0.3, 0.3 };
@@ -929,6 +933,7 @@ void setup_objects() {
 	loadOBJ("resources/obj/cube.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
 	PrepareVAO(4);
 
+	// Back barrier
 	index = 5;
 	assets[index].type = asset_type_color;
 	assets[index].color = { 0.3, 0.3, 0.3 };
@@ -937,6 +942,7 @@ void setup_objects() {
 	loadOBJ("resources/obj/cube.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
 	PrepareVAO(5);
 
+	// Front barrier
 	index = 6;
 	assets[index].type = asset_type_color;
 	assets[index].color = { 0.3, 0.3, 0.3 };
@@ -945,6 +951,7 @@ void setup_objects() {
 	loadOBJ("resources/obj/cube.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
 	PrepareVAO(6);
 
+	// Front left corner
 	index = 7;
 	assets[index].type = asset_type_color;
 	assets[index].color = { 0.3, 0.3, 0.3 };
@@ -953,6 +960,7 @@ void setup_objects() {
 	loadOBJ("resources/obj/cube.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
 	PrepareVAO(7);
 
+	// Back right corner
 	index = 8;
 	assets[index].type = asset_type_color;
 	assets[index].color = { 0.3, 0.3, 0.3 };
@@ -960,7 +968,8 @@ void setup_objects() {
 	assets[index].coord = { -10.5, -0.5, -10.5 };
 	loadOBJ("resources/obj/cube.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
 	PrepareVAO(8);
-
+	
+	// Middle Crate
 	index = 9;
 	assets[index].type = asset_type_texture;
 	assets[index].color = { 0.7, 0.7, 0.0 };
@@ -975,6 +984,7 @@ void setup_objects() {
 	
 	PrepareVAO(9);
 
+	// Chasing ball
 	index = 10;
 	//asset_type_texture
 	assets[index].type = asset_type_texture;
@@ -982,6 +992,7 @@ void setup_objects() {
 	assets[index].scale = { 0.2f, 0.2f, 0.2f };
 	assets[index].coord = { 0, 0, 0 };
 	loadOBJ("resources/obj/mic.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+
 	for (int i = 0; i < (int)(assets[index].vertex_array.size()); i++)
 	{
 		assets[index].tex_vertex_array.push_back({ assets[index].vertex_array[i].position, assets[index].vertex_array[i].texCoor, assets[index].vertex_array[i].normal });
@@ -989,6 +1000,7 @@ void setup_objects() {
 	
 	PrepareVAO(10);
 
+	// Glove
 	index = 11;
 	assets[index].type = asset_type_color;
 	assets[index].color = { 1, 0.1, 0.1 };
@@ -997,14 +1009,16 @@ void setup_objects() {
 	loadOBJ("resources/obj/work_glove.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
 	PrepareVAO(11);
 
+	// Hopping bunny
 	index = 12;
 	assets[index].type = asset_type_color;
 	assets[index].color = { 0.7, 7.0, 0.2 };
 	assets[index].scale = { 0.1, 0.1, 0.1 };
 	assets[index].coord = { 0, 0, 0 };
-	loadOBJ("resources/obj/teapot.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+	loadOBJ("resources/obj/bunny_tri_vnt.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
 	PrepareVAO(12);
 
+	// Sad transparentish teapot
 	index = 16;
 	assets[index].type = asset_type_color;
 	assets[index].color = { 0.1, 1.0, 0.1 };
