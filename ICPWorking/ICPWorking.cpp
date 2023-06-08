@@ -66,6 +66,7 @@ std::array<bool, 3> check_objects_collisions(float x, float z);
 void check_ball_collision();
 void init_object_coords();
 void init_ball_coords();
+void play_walk_sound();
 
 
 // === Globals ===
@@ -762,9 +763,6 @@ glm::vec3 check_collision(float x, float z) {
 			player_position.z = z; //if z step would not be in object bounds, move only on z axis
 		
 	}
-	if (step_delay == 0 /* && ouch_ready*/) { /*engine->play2D("resources/sounds/step1.mp3");*/ }
-	if (step_delay == 8 /* && ouch_ready*/) { /*engine->play2D("resources/sounds/step2.mp3");*/ }
-	if (step_delay++ == 16) { step_delay = 0; }
 	return player_position;
 }
 
@@ -1264,21 +1262,33 @@ void draw_transparent(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix) 
 void update_player_position()
 {
 	float speed = 35.0f * delta_t;
+	bool should_play = false;
 
 	if (move_right_flag) {
 		glm::vec3 xz = player_position + speed * glm::normalize(glm::cross(looking_position, up));
 		player_position = check_collision(xz.x, xz.z);
+		should_play = true;
 	}
 	if (move_left_flag) {
 		glm::vec3 xz = player_position - speed * glm::normalize(glm::cross(looking_position, up));
 		player_position = check_collision(xz.x, xz.z);
+		should_play = true;
 	}
 	if (move_forward_flag) {
 		glm::vec3 xz = player_position + speed * glm::normalize(looking_position);
 		player_position = check_collision(xz.x, xz.z);
+		should_play = true;
 	}
 	if (move_backward_flag) {
 		glm::vec3 xz = player_position - speed * glm::normalize(looking_position);
 		player_position = check_collision(xz.x, xz.z);
+		should_play = true;
 	}
+	if (should_play) play_walk_sound();
+}
+
+void play_walk_sound() {
+	if (step_delay == 0) { engine->play2D("resources/sounds/run1.wav"); }
+	if (step_delay == 32) { engine->play2D("resources/sounds/run2.wav"); }
+	if (step_delay++ == 64) { step_delay = 0; }
 }
