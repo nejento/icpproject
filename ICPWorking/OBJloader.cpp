@@ -253,6 +253,10 @@ bool loadOBJ(const char* path, std::vector <vertex>& out_vertices, std::vector <
 			normalIndices.push_back(normalIndex[1]);
 			normalIndices.push_back(normalIndex[2]);
 
+			uvIndices.push_back(uvIndex[0]);
+			uvIndices.push_back(uvIndex[1]);
+			uvIndices.push_back(uvIndex[2]);
+
 			for (int j = 0; j < 6; j++)
 			{
 				indices.push_back(index + j);
@@ -273,12 +277,10 @@ bool loadOBJ(const char* path, std::vector <vertex>& out_vertices, std::vector <
 		unsigned int normalIndex = normalIndices[u];
 		glm::vec3 normal = temp_normals[normalIndex - 1];
 
-		if ((int)(temp_uvs.size()) == (int)(vertexIndices.size())){
-			glm::vec2 texCoor = (temp_uvs[vertexIndex - 1]);
-			out_vertices.push_back({ vertex, color, normal, texCoor });
-		}else{
-			out_vertices.push_back({ vertex, color, normal});
-		}
+		unsigned int uvIndex = uvIndices[u];
+		glm::vec2 uv = temp_uvs[uvIndex - 1];
+
+		out_vertices.push_back({ vertex, color, normal, uv});
 	}
 
 	fclose(file);

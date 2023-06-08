@@ -592,7 +592,7 @@ int main()
 	texture_id[0] = gen_tex("resources/textures/grass.jpg");
 	texture_id[1] = gen_tex("resources/textures/concrete.png");
 	texture_id[2] = gen_tex("resources/textures/brick_wall_texture.jpg");
-	texture_id[3] = gen_tex("resources/textures/missing.png");
+	texture_id[3] = gen_tex("resources/textures/box.png");
 	texture_id[4] = gen_tex("resources/textures/mic_textura.jpg");
 
 	// === Main Loop ===
@@ -648,7 +648,7 @@ int main()
 
 			// Use buffers
 			// Objekty 1 - 5 jsou statické stěny a prostřední žlutý čtverec
-			for (int i = 1; i < 10 ; i++) {
+			for (int i = 1; i < 9 ; i++) {
 				glBindVertexArray(assets[i].VAO);
 				glDrawElements(GL_TRIANGLES, assets[i].indices_array.size(), GL_UNSIGNED_INT, 0);
 			}
@@ -819,7 +819,7 @@ void setup_objects() {
 
 	glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
 
-	// textured 0
+	// textured 0 grass
 	assets[0].type = asset_type_texture;
 	assets[0].tex_vertex_array.push_back({ {-10.0f, -0.9f, -10.0f}, glm::vec2(-5.0f, -5.0f), up });
 	assets[0].tex_vertex_array.push_back({ { -10.0f, -0.9f, 10.0f}, glm::vec2(-5.0f, 5.0f), up });
@@ -930,11 +930,17 @@ void setup_objects() {
 	PrepareVAO(8);
 
 	index = 9;
-	assets[index].type = asset_type_color;
+	assets[index].type = asset_type_texture;
 	assets[index].color = { 0.7, 0.7, 0.0 };
-	assets[index].scale = { 2, 1, 2 };
-	assets[index].coord = { 0, -0.5, 0 };
+	assets[index].scale = { 2, 2, 2 };
+	assets[index].coord = { 0, 0, 0 };
 	loadOBJ("resources/obj/cube.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
+	
+	for (int i = 0; i < (int)(assets[index].vertex_array.size()); i++)
+	{
+		assets[index].tex_vertex_array.push_back({ assets[index].vertex_array[i].position, assets[index].vertex_array[i].texCoor, assets[index].vertex_array[i].normal });
+	}
+	
 	PrepareVAO(9);
 
 	index = 10;
@@ -1167,9 +1173,9 @@ void draw_textured(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix) {
 	glBindTexture(GL_TEXTURE_2D, texture_id[3]);
 	glDrawElements(GL_TRIANGLES, assets[15].indices_array.size(), GL_UNSIGNED_INT, 0);
 
-	/*glBindVertexArray(assets[10].VAO);
-	glBindTexture(GL_TEXTURE_2D, texture_id[4]);
-	glDrawElements(GL_TRIANGLES, assets[10].indices_array.size(), GL_UNSIGNED_INT, 0);*/
+	glBindVertexArray(assets[9].VAO);
+	glBindTexture(GL_TEXTURE_2D, texture_id[3]);
+	glDrawElements(GL_TRIANGLES, assets[9].indices_array.size(), GL_UNSIGNED_INT, 0);
 
 	glUseProgram(prog_h);
 }
