@@ -359,7 +359,7 @@ static void init_glfw(void)
 		std::cerr << "GLFW window creation error." << std::endl;
 		finalize(EXIT_FAILURE);
 	}
-	
+
 	glfwSetInputMode(globals.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	// Get some GLFW info.
 	{
@@ -394,7 +394,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 {
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 		finalize(EXIT_SUCCESS);
-		//glfwSetWindowShouldClose(window, GLFW_TRUE);
+	//glfwSetWindowShouldClose(window, GLFW_TRUE);
 	if (key == GLFW_KEY_F && action == GLFW_PRESS) {
 		if (globals.fullscreen) {
 			glfwSetWindowMonitor(window, nullptr, globals.x, globals.y, 640, 480, 0);
@@ -418,7 +418,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		move_backward_flag = true;
 	if (key == GLFW_KEY_A && action == GLFW_PRESS)
 		move_left_flag = true;
-	if (key == GLFW_KEY_D && action == GLFW_PRESS) 
+	if (key == GLFW_KEY_D && action == GLFW_PRESS)
 		move_right_flag = true;
 
 	if (key == GLFW_KEY_W && action == GLFW_RELEASE) {
@@ -432,13 +432,13 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	if (key == GLFW_KEY_A && action == GLFW_RELEASE) {
 		move_left_flag = false;
 		std::cout << 'A';
-	}	
+	}
 	if (key == GLFW_KEY_D && action == GLFW_RELEASE) {
 		move_right_flag = false;
 		std::cout << 'D';
 	}
 	std::cout << "Player position: " << player_position.x << " " << player_position.y << " " << player_position.z << " " << std::endl;
-	
+
 }
 
 /* Editable: Mouse callback function - Pouze zaznamenáváme kliknutí, nereflektujeme žádné změny, jen vypisujeme v logu
@@ -517,10 +517,10 @@ int main()
 	std::cout << "Type \"r\" and confirm with ENTER for realtime raster processing or type anything else for the OpenGL application.\n";
 	char c;
 	std::cin.get(c);
-	
+
 	if (c == 'r') {
 		run_2D_raster_processing();
-		return 0 ;
+		return 0;
 	}
 
 	init_glfw();
@@ -635,7 +635,7 @@ int main()
 
 			// Use buffers
 			// Objekty 1 - 5 jsou statické stěny a prostřední žlutý čtverec
-			for (int i = 1; i < 9 ; i++) {
+			for (int i = 1; i < 9; i++) {
 				glBindVertexArray(assets[i].VAO);
 				glDrawElements(GL_TRIANGLES, assets[i].indices_array.size(), GL_UNSIGNED_INT, 0);
 			}
@@ -644,8 +644,8 @@ int main()
 			//chasing ball			
 			float ball_speed = 8.0f * delta_t;
 			glm::mat4 temp = m_m;
-			glm::vec3 target_offset = glm::vec3(0,-0.175f,0);
-			glm::vec3 direction_to_player = player_position*0.5f - ball_position + target_offset;
+			glm::vec3 target_offset = glm::vec3(0, -0.175f, 0);
+			glm::vec3 direction_to_player = player_position * 0.5f - ball_position + target_offset;
 			direction_to_player = glm::normalize(direction_to_player);
 			glm::vec3 distance = direction_to_player * ball_speed;
 			ball_position = ball_position + distance;
@@ -655,7 +655,7 @@ int main()
 			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
 			glBindVertexArray(assets[10].VAO);
 			glDrawElements(GL_TRIANGLES, assets[10].indices_array.size(), GL_UNSIGNED_INT, 0);
-			
+
 			// Set ball offsets
 			ball_coords.min_x = ball_coords.min_x + distance.x;
 			ball_coords.max_x = ball_coords.max_x + distance.x;
@@ -670,19 +670,19 @@ int main()
 
 			// rotate glove and f
 			temp = m_m;
-			
+
 			glm::vec3 glove_position = (player_position + looking_position) * 0.5f;
 			glove_position.y = player_position.y; //ignore the y component of looking position
 			m_m = glm::translate(m_m, glove_position); // move to the position of the player (camera)
 			m_m = m_m = glm::rotate(m_m, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));//rotate so the palm of the hand is facing down
-			
-			float glove_angle = Yaw-90;
+
+			float glove_angle = Yaw - 90;
 			m_m = m_m = glm::rotate(m_m, glm::radians(glove_angle), glm::vec3(0.0f, 0.0f, 1.0f)); //rotate the glove so it matches the direction the camera faces
 
 
-			glm::vec3 gloveOffset = glm::vec3(0.01f, -2,1);
+			glm::vec3 gloveOffset = glm::vec3(0.01f, -2, 1);
 			m_m = glm::translate(m_m, gloveOffset); //apply offset to put the glove to the right position relative to the camera
-			
+
 			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
 			glBindVertexArray(assets[11].VAO);
 			glDrawElements(GL_TRIANGLES, assets[11].indices_array.size(), GL_UNSIGNED_INT, 0);
@@ -691,8 +691,8 @@ int main()
 			// move teapot in the center
 			temp = m_m;
 
-		
-			glm::vec3 teapot_1_offset = glm::vec3(0, std::sin((float)glfwGetTime())*0.8, 0);
+
+			glm::vec3 teapot_1_offset = glm::vec3(0, std::sin((float)glfwGetTime()) * 0.8, 0);
 			glm::vec3 teapot_bop = (teapod_1_position + teapot_1_offset);
 			m_m = glm::rotate(m_m, glm::radians(90.0f * (float)glfwGetTime()), glm::vec3(0.0f, 1.0f, 0.0f));
 			m_m = glm::translate(m_m, teapot_bop);
@@ -759,7 +759,7 @@ void update_player_position()
 	if (should_play) play_walk_sound();
 }
 
-/* 
+/*
 * Plays the walking sound
 */
 void play_walk_sound() {
@@ -903,7 +903,7 @@ void setup_objects() {
 	assets[0].tex_vertex_array.push_back({ {10.0f, -0.9f, 10.0f}, glm::vec2(5.0f, 5.0f), up });
 	assets[0].tex_vertex_array.push_back({ {10.0f, -0.9f, -10.0f}, glm::vec2(5.0f, -5.0f), up });
 	assets[0].tex_vertex_array.push_back({ {-10.0f, -0.9f, -10.0f}, glm::vec2(-5.0f, -5.0f), up });
-	assets[0].indices_array = { 0, 1, 2 , 3, 4, 5};
+	assets[0].indices_array = { 0, 1, 2 , 3, 4, 5 };
 	PrepareVAO(0);
 
 	// Textured Brick Wall
@@ -913,13 +913,13 @@ void setup_objects() {
 	assets[14].tex_vertex_array.push_back({ { 11.0f, 9.0, 11.0f }, glm::vec2(1.0f, 1.0f), up });
 	assets[14].tex_vertex_array.push_back({ { 11.0f, 9.0f, 11.0f}, glm::vec2(1.0f, 1.0f), up });
 	assets[14].tex_vertex_array.push_back({ { 11.0f, -1.0f, 11.0f}, glm::vec2(1.0f, -1.0f), up });
-	assets[14].tex_vertex_array.push_back({ { -11.0f, -1.0f, 11.0f }, glm::vec2(-1.0f, -1.0f), up});
-	assets[14].indices_array = { 0, 1, 2, 3, 4, 5};
+	assets[14].tex_vertex_array.push_back({ { -11.0f, -1.0f, 11.0f }, glm::vec2(-1.0f, -1.0f), up });
+	assets[14].indices_array = { 0, 1, 2, 3, 4, 5 };
 	PrepareVAO(14);
 
 	// === Colored objects ===
 	int index;
-	
+
 	// Front right corner
 	index = 1;
 	assets[index].type = asset_type_color;
@@ -994,7 +994,7 @@ void setup_objects() {
 	assets[index].coord = { -10.5, -0.5, -10.5 };
 	loadOBJ("resources/obj/cube.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
 	PrepareVAO(8);
-	
+
 	// Middle Crate
 	index = 9;
 	assets[index].type = asset_type_texture;
@@ -1002,12 +1002,12 @@ void setup_objects() {
 	assets[index].scale = { 2, 2, 2 };
 	assets[index].coord = { 0, 0, 0 };
 	loadOBJ("resources/obj/cube.obj", assets[index].vertex_array, assets[index].indices_array, assets[index].color, assets[index].scale, assets[index].coord);
-	
+
 	for (int i = 0; i < (int)(assets[index].vertex_array.size()); i++)
 	{
 		assets[index].tex_vertex_array.push_back({ assets[index].vertex_array[i].position, assets[index].vertex_array[i].texCoor, assets[index].vertex_array[i].normal });
 	}
-	
+
 	PrepareVAO(9);
 
 	// Chasing ball
@@ -1023,7 +1023,7 @@ void setup_objects() {
 	{
 		assets[index].tex_vertex_array.push_back({ assets[index].vertex_array[i].position, assets[index].vertex_array[i].texCoor, assets[index].vertex_array[i].normal });
 	}
-	
+
 	PrepareVAO(10);
 
 	// Glove
@@ -1131,7 +1131,7 @@ GLuint PrepareVAO(int index) {
 	// Bind the VBO, set type as GL_ARRAY_BUFFER
 	glBindBuffer(GL_ARRAY_BUFFER, assets[index].VBO);
 
-	if (assets[index].type == asset_type_texture) 
+	if (assets[index].type == asset_type_texture)
 	{
 		// Fill-in data into the VBO
 		glBufferData(GL_ARRAY_BUFFER, assets[index].tex_vertex_array.size() * sizeof(tex_vertex), assets[index].tex_vertex_array.data(), GL_DYNAMIC_DRAW);
