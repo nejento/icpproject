@@ -30,7 +30,7 @@
 // OpenGL math
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
-//#include <irrklang/irrKlang.h>
+#include <irrklang/irrKlang.h>
 
 // Other Header files
 #include "OBJloader.h"
@@ -53,9 +53,7 @@ std::string getShaderInfoLog(const GLuint obj);
 std::string textFileRead(const std::string fn);
 
 // create sound engine
-/*
 irrklang::ISoundEngine* engine = irrklang::createIrrKlangDevice();
-*/
 
 void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
 
@@ -69,8 +67,9 @@ void draw_transparent(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix);
 
 glm::vec3 check_collision(float x, float z);
 std::array<bool, 3> check_objects_collisions(float x, float z);
+void check_ball_collision();
 void init_object_coords();
-
+void init_ball_coords();
 
 
 // === Globals ===
@@ -115,7 +114,7 @@ GLfloat lastypos = 0.0f;
 
 // movement and sound help variables
 int step_delay = 0;
-bool ouch_ready = true;
+bool oofing = true;
 int move_count = 0;
 
 
@@ -171,6 +170,9 @@ struct coords {
 const int n_col_obj = 9;
 std::vector<vertex> col_obj[n_col_obj];
 coords objects_coords[n_col_obj];
+
+std::vector<vertex> ball_col_obj;
+coords ball_coords;
 
 GLuint prog_h, prog_tex, prog_transp;
 
@@ -556,13 +558,14 @@ int main()
 	// create shaders
 	std::cout << "BASIC SHADER" << '\n';
 	make_shader("resources/my.vert", "resources/my.frag", &prog_h);
-	glUseProgram(prog_h);
 
 	std::cout << "TRANSPARENCY SHADER" << '\n';
 	make_shader("resources/transparency.vert", "resources/transparency.frag", &prog_transp);
 
 	std::cout << "TEXTURE SHADER" << '\n';
 	make_shader("resources/texture.vert", "resources/texture.frag", &prog_tex);
+
+	glUseProgram(prog_h);
 
 
 	// load objects
@@ -660,13 +663,24 @@ int main()
 			glm::vec3 target_offset = glm::vec3(0,-0.175f,0);
 			glm::vec3 direction_to_player = player_position*0.5f - ball_position + target_offset;
 			direction_to_player = glm::normalize(direction_to_player);
-			ball_position = ball_position + direction_to_player * ball_speed;
+			glm::vec3 distance = direction_to_player * ball_speed;
+			ball_position = ball_position + distance;
 			//bal
 			m_m = glm::translate(m_m, ball_position);
 			m_m = glm::rotate(m_m, glm::radians(720.0f * (float)glfwGetTime()), glm::vec3(0.0f, 1.0f, 0.0f));
 			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
 			glBindVertexArray(assets[10].VAO);
 			glDrawElements(GL_TRIANGLES, assets[10].indices_array.size(), GL_UNSIGNED_INT, 0);
+			
+			// Set ball offsets
+			ball_coords.min_x = ball_coords.min_x + distance.x;
+			ball_coords.max_x = ball_coords.max_x + distance.x;
+			ball_coords.min_z = ball_coords.min_z + distance.z;
+			ball_coords.max_z = ball_coords.max_z + distance.z;
+			//std::cout << "ball cords " << ball_coords.min_x << " " << ball_coords.max_x << " " << ball_coords.min_z << " " << ball_coords.max_z << std::endl;
+			//std::cout << "ball " << ball_position.x << " " << ball_position.z << " player " << player_position.x * 0.5f << " " << player_position.z * 0.5f << std::endl;
+			check_ball_collision(); //collision check
+
 			m_m = temp;
 
 
@@ -740,28 +754,16 @@ glm::vec3 check_collision(float x, float z) {
 		//if object isn't in bounds of any object, move freely
 		player_position.x = x;
 		player_position.z = z;
-		ouch_ready = true;
 	}
 	else {
-		if (col[1]) {
-			if (ouch_ready) {
-				/*engine->play2D("resources/sounds/ouch.mp3");*/
-				ouch_ready = false;
-			}
-			//if x step would not be in object bounds, move only on x axis
-			player_position.x = x;
-		}
-		if (col[2]) {
-			if (ouch_ready) {
-				/*engine->play2D("resources/sounds/ouch.mp3");*/
-				ouch_ready = false;
-			}
-			//if z step would not be in object bounds, move only on z axis
-			player_position.z = z;
-		}
+		if (col[1])
+			player_position.x = x; //if x step would not be in object bounds, move only on x axis
+		if (col[2]) 
+			player_position.z = z; //if z step would not be in object bounds, move only on z axis
+		
 	}
-	if (step_delay == 0 && ouch_ready) { /*engine->play2D("resources/sounds/step1.mp3");*/ }
-	if (step_delay == 8 && ouch_ready) { /*engine->play2D("resources/sounds/step2.mp3");*/ }
+	if (step_delay == 0 /* && ouch_ready*/) { /*engine->play2D("resources/sounds/step1.mp3");*/ }
+	if (step_delay == 8 /* && ouch_ready*/) { /*engine->play2D("resources/sounds/step2.mp3");*/ }
 	if (step_delay++ == 16) { step_delay = 0; }
 	return player_position;
 }
@@ -786,6 +788,22 @@ std::array<bool, 3> check_objects_collisions(float x, float z) {
 	return col;
 }
 
+
+void check_ball_collision() {
+	glm::vec3 p_p = player_position * 0.5f;
+	//if (player_position.x * 0.5f > ball_coords.min_x && player_position.x * 0.5f < ball_coords.max_x && player_position.z * 0.5f > ball_coords.min_z && player_position.z * 0.5f < ball_coords.max_z)
+	if (p_p.x > ball_coords.min_x && p_p.x < ball_coords.max_x && p_p.z > ball_coords.min_z && p_p.z < ball_coords.max_z) {
+		if (!oofing) {
+			engine->play2D("resources/sounds/oof.wav");
+			oofing = true;
+		}
+	}
+	else {
+		oofing = false;
+	}
+}
+
+
 void init_object_coords() {
 	//get min and max coords for objects (used in collision logic)
 	for (int i = 0; i < n_col_obj; i++) {
@@ -806,6 +824,27 @@ void init_object_coords() {
 			if (v.position[2] * 2 > objects_coords[i].max_z) {
 				objects_coords[i].max_z = v.position[2] * 2;
 			}
+		}
+	}
+}
+
+void init_ball_coords() {
+	ball_coords.min_x = 999;
+	ball_coords.max_x = -999;
+	ball_coords.min_z = 999;
+	ball_coords.max_z = -999;
+	for (vertex v : assets[10].vertex_array) {
+		if (v.position[0] * 2 < ball_coords.min_x) {
+			ball_coords.min_x = v.position[0] * 2;
+		}
+		if (v.position[0] * 2 > ball_coords.max_x) {
+			ball_coords.max_x = v.position[0] * 2;
+		}
+		if (v.position[2] * 2 < ball_coords.min_z) {
+			ball_coords.min_z = v.position[2] * 2;
+		}
+		if (v.position[2] * 2 > ball_coords.max_z) {
+			ball_coords.max_z = v.position[2] * 2;
 		}
 	}
 }
@@ -989,6 +1028,7 @@ void setup_objects() {
 	}
 
 	init_object_coords();
+	init_ball_coords();
 }
 
 /* Generates a texture object from an image file
@@ -1235,7 +1275,6 @@ void update_player_position()
 	}
 	if (move_forward_flag) {
 		glm::vec3 xz = player_position + speed * glm::normalize(looking_position);
-
 		player_position = check_collision(xz.x, xz.z);
 	}
 	if (move_backward_flag) {
