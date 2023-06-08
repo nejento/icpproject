@@ -69,7 +69,7 @@ void draw_transparent(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix);
 
 glm::vec3 check_collision(float x, float z);
 std::array<bool, 3> check_objects_collisions(float x, float z);
-bool check_ball_collision();
+void check_ball_collision();
 void init_object_coords();
 void init_ball_coords();
 
@@ -666,21 +666,24 @@ int main()
 			glm::vec3 target_offset = glm::vec3(0,-0.175f,0);
 			glm::vec3 direction_to_player = player_position*0.5f - ball_position + target_offset;
 			direction_to_player = glm::normalize(direction_to_player);
-			ball_position = ball_position + direction_to_player * ball_speed;
+			glm::vec3 distance = direction_to_player * ball_speed;
+			ball_position = ball_position + distance;
 			//bal
 			m_m = glm::translate(m_m, ball_position);
 			m_m = glm::rotate(m_m, glm::radians(720.0f * (float)glfwGetTime()), glm::vec3(0.0f, 1.0f, 0.0f));
 			glUniformMatrix4fv(glGetUniformLocation(prog_h, "uM_m"), 1, GL_FALSE, glm::value_ptr(m_m));
 			glBindVertexArray(assets[10].VAO);
 			glDrawElements(GL_TRIANGLES, assets[10].indices_array.size(), GL_UNSIGNED_INT, 0);
-			init_ball_coords();
-			/*
+			
+			// Set ball offsets
 			ball_coords.min_x = ball_coords.min_x + distance.x;
 			ball_coords.max_x = ball_coords.max_x + distance.x;
 			ball_coords.min_z = ball_coords.min_z + distance.z;
 			ball_coords.max_z = ball_coords.max_z + distance.z;
-			*/
-			check_ball_collision();
+			//std::cout << "ball cords " << ball_coords.min_x << " " << ball_coords.max_x << " " << ball_coords.min_z << " " << ball_coords.max_z << std::endl;
+			//std::cout << "ball " << ball_position.x << " " << ball_position.z << " player " << player_position.x * 0.5f << " " << player_position.z * 0.5f << std::endl;
+			check_ball_collision(); //collision check
+
 			m_m = temp;
 
 
@@ -801,11 +804,12 @@ std::array<bool, 3> check_objects_collisions(float x, float z) {
 }
 
 
-bool check_ball_collision() {
+void check_ball_collision() {
 	//if x step would be in object bounds
-	if (player_position.x > ball_coords.min_x && player_position.x < ball_coords.max_x && player_position.z > ball_coords.min_z && player_position.z < ball_coords.max_z)
+	glm::vec3 p_p = player_position * 0.5f;
+	//if (player_position.x * 0.5f > ball_coords.min_x && player_position.x * 0.5f < ball_coords.max_x && player_position.z * 0.5f > ball_coords.min_z && player_position.z * 0.5f < ball_coords.max_z)
+	if (p_p.x > ball_coords.min_x && p_p.x < ball_coords.max_x && p_p.z > ball_coords.min_z && p_p.z < ball_coords.max_z)
 		std::cout << "colliding" << std::endl;
-	return false;
 }
 
 
