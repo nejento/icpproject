@@ -787,9 +787,7 @@ void check_ball_collision() {
 			oofing = true;
 		}
 	}
-	else {
-		oofing = false;
-	}
+	else oofing = false;
 }
 
 
