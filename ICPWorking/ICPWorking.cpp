@@ -86,7 +86,15 @@ typedef struct s_globals {
 
 s_globals globals;
 
+float delta_t = 0; // time between frames used for movement calculation
+float last_frame = 0; // time of the last frame rendered
+
 // player & position
+bool move_left_flag = false;
+bool move_right_flag = false;
+bool move_forward_flag = false;
+bool move_backward_flag = false;
+
 glm::vec3 player_position(-10.0f, 1.0f, -10.0f);
 glm::vec3 ball_position(0.0f, 0.0f, 0.0f);
 glm::vec3 looking_position(10.0f, 1.0f, 10.0f);
@@ -380,29 +388,11 @@ static void init_glfw(void)
 * @param: mods - bit field describing which modifier keys were held down
 * @return: none
 */
-
-
-bool move_left_flag = false;
-bool move_right_flag = false;
-bool move_forward_flag = false;
-bool move_backward_flag = false;
-
-float delta_t = 0; // time between frames used for movement calculation
-float last_frame = 0; // time of the last frame rendered
-
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 		finalize(EXIT_SUCCESS);
-	//glfwSetWindowShouldClose(window, GLFW_TRUE);
-	if (key == GLFW_KEY_W && action != GLFW_RELEASE)
-		std::cout << 'W';
-	if (key == GLFW_KEY_S && action != GLFW_RELEASE)
-		std::cout << 'S';
-	if (key == GLFW_KEY_A && action != GLFW_RELEASE)
-		std::cout << 'A';
-	if (key == GLFW_KEY_D && action != GLFW_RELEASE)
-		std::cout << 'D';
+		//glfwSetWindowShouldClose(window, GLFW_TRUE);
 	if (key == GLFW_KEY_F && action == GLFW_PRESS) {
 		if (globals.fullscreen) {
 			glfwSetWindowMonitor(window, nullptr, globals.x, globals.y, 640, 480, 0);
@@ -426,20 +416,27 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		move_backward_flag = true;
 	if (key == GLFW_KEY_A && action == GLFW_PRESS)
 		move_left_flag = true;
-	if (key == GLFW_KEY_D && action == GLFW_PRESS) {
+	if (key == GLFW_KEY_D && action == GLFW_PRESS) 
 		move_right_flag = true;
-	}
 
-	if (key == GLFW_KEY_W && action == GLFW_RELEASE)
+	if (key == GLFW_KEY_W && action == GLFW_RELEASE) {
 		move_forward_flag = false;
-	if (key == GLFW_KEY_S && action == GLFW_RELEASE)
+		std::cout << 'W';
+	}
+	if (key == GLFW_KEY_S && action == GLFW_RELEASE) {
 		move_backward_flag = false;
-	if (key == GLFW_KEY_A && action == GLFW_RELEASE)
+		std::cout << 'S';
+	}
+	if (key == GLFW_KEY_A && action == GLFW_RELEASE) {
 		move_left_flag = false;
+		std::cout << 'A';
+	}	
 	if (key == GLFW_KEY_D && action == GLFW_RELEASE) {
 		move_right_flag = false;
+		std::cout << 'D';
 	}
 	std::cout << "Player position: " << player_position.x << " " << player_position.y << " " << player_position.z << " " << std::endl;
+	
 }
 
 /* Editable: Mouse callback function - Pouze zaznamenáváme kliknutí, nereflektujeme žádné změny, jen vypisujeme v logu
