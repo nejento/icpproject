@@ -55,5 +55,7 @@
     <None Include="resources\texture.frag">
       <Filter>Soubory zdrojů\Shaders</Filter>
     </None>
+    <None Include="resources\transparency.frag" />
+    <None Include="resources\transparency.vert" />
   </ItemGroup>
 </Project>

@@ -86,14 +86,14 @@ typedef struct s_globals {
 
 s_globals globals;
 
-float delta_t = 0; // time between frames used for movement calculation
-float last_frame = 0; // time of the last frame rendered
-
 // player & position
 bool move_left_flag = false;
 bool move_right_flag = false;
 bool move_forward_flag = false;
 bool move_backward_flag = false;
+
+float delta_t = 0; // time between frames used for movement calculation
+float last_frame = 0; // time of the last frame rendered
 
 glm::vec3 player_position(-10.0f, 1.0f, -10.0f);
 glm::vec3 ball_position(0.0f, 0.0f, 0.0f);
@@ -110,7 +110,9 @@ GLfloat lastypos = 0.0f;
 #define array_cnt(a) ((unsigned int)(sizeof(a) / sizeof(a[0])))
 
 // movement and sound help variables
-int step_counter = 0;
+float step_counter = 0;
+bool played_left = false;
+bool played_right = false;
 bool oofing = true;
 
 
@@ -761,9 +763,20 @@ void update_player_position()
 * Plays the walking sound every 32 steps.
 */
 void play_walk_sound() {
-	if (step_counter == 0)    engine->play2D("resources/sounds/run1.wav");
-	if (step_counter == 32)   engine->play2D("resources/sounds/run2.wav");
-	if (step_counter++ == 64) step_counter = 0;
+	if (step_counter < 1 && !played_left) {
+		played_left = true;;
+		engine->play2D("resources/sounds/run1.wav");
+	}
+	if (step_counter > 3 && !played_right) {
+		played_right = true;
+		engine->play2D("resources/sounds/run2.wav");
+	}
+	step_counter = step_counter + (10 * delta_t);
+	if (step_counter > 6) {
+		step_counter = 0;
+		played_left = false;
+		played_right = false;
+	}
 }
 
 /*
@@ -1222,7 +1235,7 @@ void draw_textured(glm::mat4 m_m, glm::mat4 v_m, glm::mat4 projectionMatrix) {
 	//send texture unit number to FS
 	glUniform1i(glGetUniformLocation(prog_tex, "tex0"), 0);
 
-	// draw object using VAO (Bind+DrawElements+Unbind)
+	// draw object using VAO (Bind + DrawElements + Unbind)
 	glBindVertexArray(assets[0].VAO);
 	glBindTexture(GL_TEXTURE_2D, texture_id[0]);
 	glDrawElements(GL_TRIANGLES, assets[0].indices_array.size(), GL_UNSIGNED_INT, 0);
